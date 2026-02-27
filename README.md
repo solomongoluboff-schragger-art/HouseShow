@@ -38,6 +38,12 @@ Copy `.env.example` to `.env` and/or `apps/web/.env`, `apps/api/.env` as needed.
 - `VITE_API_BASE_URL` (frontend)
 - `DATABASE_URL` (backend)
 - `FRONTEND_ORIGIN` (backend, for CORS)
+- `VITE_FIREBASE_API_KEY` (frontend)
+- `VITE_FIREBASE_AUTH_DOMAIN` (frontend)
+- `VITE_FIREBASE_PROJECT_ID` (frontend)
+- `VITE_FIREBASE_STORAGE_BUCKET` (frontend)
+- `VITE_FIREBASE_MESSAGING_SENDER_ID` (frontend)
+- `VITE_FIREBASE_APP_ID` (frontend)
 
 ## Deployment (Vercel + Fly.io)
 This repo is set up for Vercel (frontend) and Fly.io (API).

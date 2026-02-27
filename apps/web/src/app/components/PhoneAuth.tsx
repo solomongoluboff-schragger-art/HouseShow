@@ -6,7 +6,7 @@ import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } fro
 import { auth } from '../lib/firebase';
 
 interface PhoneAuthProps {
-  onComplete: (phoneNumber: string, isNewUser: boolean) => void;
+  onComplete: (phoneNumber: string, isNewUser: boolean, idToken: string) => void;
   onBack: () => void;
 }
 
@@ -79,10 +79,11 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
     setIsVerifying(true);
     confirmation
       .confirm(verificationCode)
-      .then((credential) => {
+      .then(async (credential) => {
         const metadata = credential.user.metadata;
         const isNewUser = metadata.creationTime === metadata.lastSignInTime;
-        onComplete(e164Phone, isNewUser);
+        const idToken = await credential.user.getIdToken();
+        onComplete(e164Phone, isNewUser, idToken);
       })
       .catch((err) => {
         setError(err?.message ?? 'Invalid verification code.');

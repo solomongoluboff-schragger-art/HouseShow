@@ -147,7 +147,7 @@ export type Event = {
 
 
 export type AuthResponse = {
-  user: { id: string; email: string; roles: string[]; createdAt: string };
+  user: { id: string; email: string | null; roles: string[]; createdAt: string };
   token: string;
 };
 
@@ -165,10 +165,28 @@ export async function login(email: string, password: string) {
   });
 }
 
+export async function loginWithFirebase(idToken: string, email?: string) {
+  return apiRequest<AuthResponse>("/auth/firebase", {
+    method: "POST",
+    body: JSON.stringify({ idToken, email }),
+  });
+}
+
 export async function getMe(token: string) {
-  return apiRequest<{ user: { id: string; email: string; roles: string[]; createdAt: string } }>(
+  return apiRequest<{ user: { id: string; email: string | null; roles: string[]; createdAt: string } }>(
     "/me",
     {},
+    token
+  );
+}
+
+export async function updateMe(payload: { email?: string }, token: string) {
+  return apiRequest<{ user: { id: string; email: string | null; roles: string[]; createdAt: string } }>(
+    "/me",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
     token
   );
 }
@@ -181,6 +199,14 @@ export async function listArtists(q?: string) {
 export async function listHosts(q?: string) {
   const query = buildQuery({ q, take: 100 });
   return apiRequest<{ hosts: HostProfile[] }>(`/hosts${query}`);
+}
+
+export async function getMyArtistProfile(token: string) {
+  return apiRequest<{ profile: ArtistProfile }>(`/artist/me`, {}, token);
+}
+
+export async function getMyHostProfile(token: string) {
+  return apiRequest<{ profile: HostProfile }>(`/host/me`, {}, token);
 }
 
 

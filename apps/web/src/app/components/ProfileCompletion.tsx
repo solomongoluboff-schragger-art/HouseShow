@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Upload, X, CheckCircle, Music, Instagram, Globe, ArrowLeft } from 'lucide-react';
+import { Upload, X, CheckCircle, Music, Instagram, Globe } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { CITY_OPTIONS, neighborhoodsForCity } from '../data/locations';
 
 interface ProfileCompletionProps {
   userType: 'artist' | 'host' | 'fan';
@@ -21,6 +22,8 @@ interface UploadedImage {
 export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompletionProps) {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -70,6 +73,40 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
       setVideoFile(file);
     }
   };
+
+  const handlePhotoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDraggingPhotos(false);
+    const files = e.dataTransfer.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newImage: UploadedImage = {
+            id: Math.random().toString(36).substr(2, 9),
+            url: reader.result as string,
+            isProfile: uploadedImages.length === 0,
+          };
+          setUploadedImages((prev) => [...prev, newImage]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleVideoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDraggingVideo(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setVideoFile(file);
+    }
+  };
+
+  const neighborhoodOptions = useMemo(
+    () => neighborhoodsForCity(formData.city || formData.userCity || formData.hometown),
+    [formData.city, formData.userCity, formData.hometown]
+  );
 
   const removeImage = (id: string) => {
     setUploadedImages((prev) => prev.filter((img) => img.id !== id));
@@ -178,15 +215,18 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                   <Label htmlFor="hometown" className="text-foreground mb-2 font-['Times',serif]">
                     Hometown <span className="text-primary">*</span>
                   </Label>
-                  <Input
+                  <select
                     id="hometown"
-                    type="text"
                     required
                     value={formData.hometown}
                     onChange={(e) => setFormData({ ...formData, hometown: e.target.value })}
-                    className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Brooklyn, NY"
-                  />
+                    className="w-full bg-background border border-border rounded-sm px-3 py-2 font-['Times',serif]"
+                  >
+                    <option value="">Select a city</option>
+                    {CITY_OPTIONS.map((city) => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -236,22 +276,15 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                           alt="Upload" 
                           className="w-full h-32 object-cover rounded-sm border-2 border-border"
                         />
-                        {img.isProfile && (
-                          <Badge className="absolute top-2 left-2 bg-primary text-foreground">
-                            Profile
-                          </Badge>
-                        )}
+                        <label className="absolute top-2 left-2 flex items-center gap-2 text-xs bg-card/90 border border-border rounded px-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={img.isProfile}
+                            onChange={() => setProfileImage(img.id)}
+                          />
+                          <span>Profile</span>
+                        </label>
                         <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm flex items-center justify-center gap-2">
-                          {!img.isProfile && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => setProfileImage(img.id)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            >
-                              Set Profile
-                            </Button>
-                          )}
                           <Button
                             type="button"
                             size="sm"
@@ -265,11 +298,21 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     ))}
                   </div>
 
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-sm cursor-pointer bg-background hover:bg-card transition-colors">
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-sm cursor-pointer transition-colors ${
+                      isDraggingPhotos ? 'border-primary bg-primary/10' : 'border-border bg-background hover:bg-card'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingPhotos(true);
+                    }}
+                    onDragLeave={() => setIsDraggingPhotos(false)}
+                    onDrop={handlePhotoDrop}
+                  >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground font-['Times',serif]">
-                        Click to upload photos
+                        Click to upload photos or drag & drop
                       </p>
                     </div>
                     <input
@@ -310,11 +353,21 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                       </Button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-sm cursor-pointer bg-background hover:bg-card transition-colors">
+                    <label
+                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-sm cursor-pointer transition-colors ${
+                        isDraggingVideo ? 'border-primary bg-primary/10' : 'border-border bg-background hover:bg-card'
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingVideo(true);
+                      }}
+                      onDragLeave={() => setIsDraggingVideo(false)}
+                      onDrop={handleVideoDrop}
+                    >
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground font-['Times',serif]">
-                          Click to upload video
+                          Click to upload video or drag & drop
                         </p>
                       </div>
                       <input
@@ -424,30 +477,36 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     <Label htmlFor="neighborhood" className="text-foreground mb-2 font-['Times',serif]">
                       Neighborhood <span className="text-primary">*</span>
                     </Label>
-                    <Input
+                    <select
                       id="neighborhood"
-                      type="text"
                       required
                       value={formData.neighborhood}
                       onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                      className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                      placeholder="Williamsburg"
-                    />
+                      className="w-full bg-background border border-border rounded-sm px-3 py-2 font-['Times',serif]"
+                    >
+                      <option value="">Select a neighborhood</option>
+                      {neighborhoodOptions.map((neighborhood) => (
+                        <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <Label htmlFor="city" className="text-foreground mb-2 font-['Times',serif]">
                       City <span className="text-primary">*</span>
                     </Label>
-                    <Input
+                    <select
                       id="city"
-                      type="text"
                       required
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                      placeholder="Brooklyn, NY"
-                    />
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value, neighborhood: '' })}
+                      className="w-full bg-background border border-border rounded-sm px-3 py-2 font-['Times',serif]"
+                    >
+                      <option value="">Select a city</option>
+                      {CITY_OPTIONS.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -476,7 +535,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.venueDescription}
                     onChange={(e) => setFormData({ ...formData, venueDescription: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary resize-none font-['Times',serif]"
-                    placeholder="Describe your space..."
+                    placeholder="We’ve got a cozy living room that fits ~40 people, a sturdy coffee table for merch, and neighbors who love indie folk (as long as we’re done by 10). BYOB, street parking, and a very friendly cat."
                     rows={4}
                   />
                 </div>
@@ -490,18 +549,26 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     Upload photos of your space.
                   </p>
                   
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    {uploadedImages.map((img) => (
-                      <div key={img.id} className="relative group">
-                        <img 
-                          src={img.url} 
-                          alt="Upload" 
-                          className="w-full h-32 object-cover rounded-sm border-2 border-border"
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  {uploadedImages.map((img) => (
+                    <div key={img.id} className="relative group">
+                      <img 
+                        src={img.url} 
+                        alt="Upload" 
+                        className="w-full h-32 object-cover rounded-sm border-2 border-border"
+                      />
+                      <label className="absolute top-2 left-2 flex items-center gap-2 text-xs bg-card/90 border border-border rounded px-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={img.isProfile}
+                          onChange={() => setProfileImage(img.id)}
                         />
-                        <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm flex items-center justify-center gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
+                        <span>Profile</span>
+                      </label>
+                      <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm flex items-center justify-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
                             variant="destructive"
                             onClick={() => removeImage(img.id)}
                           >
@@ -613,15 +680,18 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                   <Label htmlFor="userCity" className="text-foreground mb-2 font-['Times',serif]">
                     City <span className="text-primary">*</span>
                   </Label>
-                  <Input
+                  <select
                     id="userCity"
-                    type="text"
                     required
                     value={formData.userCity}
                     onChange={(e) => setFormData({ ...formData, userCity: e.target.value })}
-                    className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Brooklyn, NY"
-                  />
+                    className="w-full bg-background border border-border rounded-sm px-3 py-2 font-['Times',serif]"
+                  >
+                    <option value="">Select a city</option>
+                    {CITY_OPTIONS.map((city) => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

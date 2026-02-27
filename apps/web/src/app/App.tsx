@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HomePage } from './components/HomePage';
 import { AccountCreation } from './components/AccountCreation';
 import { PhoneAuth } from './components/PhoneAuth';
@@ -6,7 +6,6 @@ import { ProfileCompletion } from './components/ProfileCompletion';
 import { MessagingSystem } from './components/MessagingSystem';
 import { EventConfirmation } from './components/EventConfirmation';
 import { EventDashboard } from './components/EventDashboard';
-import { DeveloperToolbar } from './components/DeveloperToolbar';
 import { HouseCard, House } from './components/HouseCard';
 import { ArtistCard, Artist } from './components/ArtistCard';
 import { ShowsPage } from './components/ShowsPage';
@@ -28,115 +27,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+import {
+  ArtistProfile as ArtistProfileData,
+  HostProfile as HostProfileData,
+  createArtistProfile,
+  createHostProfile,
+  getMyArtistProfile,
+  getMyHostProfile,
+  listArtists,
+  listHosts,
+  loginWithFirebase,
+  updateArtistProfile,
+  updateHostProfile,
+  updateMe,
+} from "./lib/api";
 
 type AuthPage = 'home' | 'login' | 'signup' | 'profileCompletion';
 type UserType = 'artist' | 'host' | 'fan' | null;
-type AppPage = 'venues' | 'artists' | 'shows' | 'hostProfile' | 'artistProfile' | 'eventProposal' | 'messages' | 'eventConfirmation' | 'eventDashboard' | 'ticketConfirmation';
-
-// Mock data for house listings
-const mockHouses: House[] = [
-  {
-    id: '1',
-    neighborhood: 'Williamsburg',
-    city: 'Brooklyn, NY',
-    capacity: 50,
-    images: [
-      'https://images.unsplash.com/photo-1591980848793-35f175a0e2d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsaXZpbmclMjByb29tJTIwY29uY2VydHxlbnwxfHx8fDE3NjY1NTA0MjZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1613833641279-8c4f218383a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsb2Z0JTIwcGVyZm9ybWFuY2UlMjBzcGFjZXxlbnwxfHx8fDE3NjY1NTA0Mjh8MA&ixlib=rb-4.1.0&q=80&w=1080'
-    ],
-    topGenres: ['Indie Rock', 'Folk', 'Alternative'],
-    artistSleep: true,
-    hostName: 'Sarah M.',
-    description: 'Spacious loft with great acoustics and a built-in PA system. Perfect for intimate indie shows.',
-    venueType: 'indoor'
-  },
-  {
-    id: '2',
-    neighborhood: 'East Austin',
-    city: 'Austin, TX',
-    capacity: 35,
-    images: [
-      'https://images.unsplash.com/photo-1757656822215-52e693970e16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWNreWFyZCUyMGNvbmNlcnQlMjB2ZW51ZXxlbnwxfHx8fDE3NjY1NTA0Mjh8MA&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1694885146901-b1d05cb1f549?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob3VzZSUyMHBhcnR5JTIwc3BhY2V8ZW58MXx8fHwxNzY2NTUwNDI3fDA&ixlib=rb-4.1.0&q=80&w=1080'
-    ],
-    topGenres: ['Country', 'Americana', 'Blues'],
-    artistSleep: false,
-    hostName: 'Jake R.',
-    description: 'Beautiful backyard venue with string lights and covered stage area. Rain or shine setup available.',
-    venueType: 'outdoor'
-  },
-  {
-    id: '3',
-    neighborhood: 'Silver Lake',
-    city: 'Los Angeles, CA',
-    capacity: 40,
-    images: [
-      'https://images.unsplash.com/photo-1642426028488-04f91c79d233?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob21lJTIwbXVzaWMlMjBzdHVkaW98ZW58MXx8fHwxNzY2NTUwNDI3fDA&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1591980848793-35f175a0e2d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsaXZpbmclMjByb29tJTIwY29uY2VydHxlbnwxfHx8fDE3NjY1NTA0MjZ8MA&ixlib=rb-4.1.0&q=80&w=1080'
-    ],
-    topGenres: ['Electronic', 'Experimental', 'Dream Pop'],
-    artistSleep: true,
-    hostName: 'Maya L.',
-    description: 'Converted garage studio with professional sound equipment and lighting. Cozy atmosphere for up to 40 guests.',
-    venueType: 'indoor'
-  },
-];
-
-// Mock data for artist listings
-const mockArtists: Artist[] = [
-  {
-    id: '1',
-    name: 'The Violet Echoes',
-    tagline: 'ethereal indie rock from brooklyn',
-    hometown: 'Brooklyn, NY',
-    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxpbmRpZSUyMGJhbmQlMjBsaXZlfGVufDF8fHx8MTczNDU1MDQyNnww&ixlib=rb-4.1.0&q=80&w=1080',
-    genres: ['Indie Rock', 'Dream Pop', 'Alternative'],
-    memberCount: 3,
-    rating: 4.9,
-    totalShows: 34,
-    typicalDraw: '30-50',
-    availableForHire: false,
-    needsSleep: true,
-    upcomingTourDates: [
-      { city: 'Washington DC', date: 'Jan 18' },
-      { city: 'Baltimore, MD', date: 'Jan 20' }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Midnight Circuit',
-    tagline: 'electronic beats meet indie sensibility',
-    hometown: 'Austin, TX',
-    image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyb2NrJTIwYmFuZCUyMHBlcmZvcm1pbmd8ZW58MXx8fHwxNzM0NTUwNDI2fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    genres: ['Electronic', 'Indie Pop', 'Synthwave'],
-    memberCount: 2,
-    rating: 4.7,
-    totalShows: 28,
-    typicalDraw: '40-60',
-    availableForHire: true,
-    needsSleep: false,
-    upcomingTourDates: []
-  },
-  {
-    id: '3',
-    name: 'Rosewood & Steel',
-    tagline: 'bluegrass with an edge',
-    hometown: 'Nashville, TN',
-    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhY291c3RpYyUyMGJhbmQ8ZW58MXx8fHwxNzM0NTUwNDI2fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    genres: ['Bluegrass', 'Folk', 'Americana'],
-    memberCount: 4,
-    rating: 4.8,
-    totalShows: 52,
-    typicalDraw: '25-40',
-    availableForHire: true,
-    needsSleep: true,
-    upcomingTourDates: [
-      { city: 'Louisville, KY', date: 'Jan 15' },
-      { city: 'Memphis, TN', date: 'Jan 17' },
-      { city: 'Atlanta, GA', date: 'Jan 19' }
-    ]
-  },
-];
+type AppPage = 'venues' | 'artists' | 'shows' | 'hostProfile' | 'artistProfile' | 'editProfile' | 'eventProposal' | 'messages' | 'eventConfirmation' | 'eventDashboard' | 'ticketConfirmation';
 
 export default function App() {
   // Authentication state
@@ -145,6 +53,13 @@ export default function App() {
   const [userType, setUserType] = useState<UserType>(null);
   const [signupUserType, setSignupUserType] = useState<UserType>(null);
   const [profileCompleted, setProfileCompleted] = useState<boolean>(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [houses, setHouses] = useState<House[]>([]);
+  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(null);
+  const [hostProfile, setHostProfile] = useState<HostProfileData | null>(null);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState<boolean>(false);
+  const [editingProfileType, setEditingProfileType] = useState<UserType>(null);
 
   // App navigation state
   const [currentPage, setCurrentPage] = useState<AppPage>('shows');
@@ -157,6 +72,73 @@ export default function App() {
   const [onTourFilter, setOnTourFilter] = useState<boolean>(false);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (stored) {
+      setAuthToken(stored);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadListings = async () => {
+      try {
+        const [artistRes, hostRes] = await Promise.all([listArtists(), listHosts()]);
+        if (!active) return;
+        const fallbackImage = "/photos/7bca2e83-a717-4819-8ffa-1fb44e15ad32_rw_1920.jpg";
+        const mappedArtists: Artist[] = artistRes.artists.map((artist) => ({
+          id: artist.id,
+          name: artist.displayName,
+          tagline: artist.tagline ?? '',
+          hometown: artist.hometown ?? '',
+          image: artist.imageUrl ?? artist.images?.[0] ?? fallbackImage,
+          genres: artist.genres ?? [],
+          memberCount: artist.memberCount ?? 1,
+          rating: artist.rating ?? 0,
+          totalShows: artist.totalShows ?? 0,
+          typicalDraw: artist.typicalDraw ?? '',
+          availableForHire: artist.availableForHire ?? false,
+          needsSleep: artist.needsSleep ?? false,
+          upcomingTourDates: artist.upcomingTourDates ?? [],
+        }));
+
+        const mappedHouses: House[] = hostRes.hosts.map((host) => ({
+          id: host.id,
+          neighborhood: host.neighborhood ?? '',
+          city: host.city ?? '',
+          capacity: host.capacity ?? 0,
+          images: host.images && host.images.length > 0 ? host.images : [fallbackImage],
+          topGenres: host.topGenres ?? [],
+          artistSleep: host.artistSleep ?? false,
+          hostName: host.displayName,
+          description: host.bio ?? '',
+          venueType: (host.venueType as House['venueType']) ?? 'indoor',
+        }));
+
+        setArtists(mappedArtists);
+        setHouses(mappedHouses);
+      } catch {
+        if (!active) return;
+        setArtists([]);
+        setHouses([]);
+      }
+    };
+
+    loadListings();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const saveAuthToken = (token: string) => {
+    setAuthToken(token);
+    setIsAuthenticated(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token);
+    }
+  };
+
   // Handlers
   const handleGetStarted = (type: 'artist' | 'host' | 'fan') => {
     setSignupUserType(type);
@@ -168,43 +150,66 @@ export default function App() {
     setAuthPage('login');
   };
 
-  const handlePhoneAuthComplete = (phoneNumber: string, isNewUser: boolean) => {
-    const nextUserType = signupUserType ?? 'fan';
+  const handlePhoneAuthComplete = async (
+    phoneNumber: string,
+    isNewUser: boolean,
+    idToken: string
+  ) => {
+    setIsLoadingProfiles(true);
+    try {
+      const auth = await loginWithFirebase(idToken);
+      saveAuthToken(auth.token);
 
-    // Route all new users to role-specific account creation after phone auth.
-    if (isNewUser) {
-      setUserType(nextUserType);
-      setProfileCompleted(false);
-      setIsAuthenticated(false);
-      setAuthPage('signup');
-      return;
-    }
+      const nextUserType = signupUserType ?? 'fan';
 
-    // Existing-user fallback.
-    setIsAuthenticated(true);
-    setUserType(nextUserType);
-    setProfileCompleted(true);
-    if (nextUserType === 'artist') {
-      setCurrentPage('venues');
-    } else if (nextUserType === 'host') {
-      setCurrentPage('artists');
-    } else {
-      setCurrentPage('shows');
+      if (isNewUser) {
+        setUserType(nextUserType);
+        setProfileCompleted(false);
+        setAuthPage('signup');
+        return;
+      }
+
+      let resolvedType: UserType = nextUserType;
+      let host: HostProfileData | null = null;
+      let artist: ArtistProfileData | null = null;
+
+      try {
+        const hostRes = await getMyHostProfile(auth.token);
+        host = hostRes.profile;
+      } catch {
+        host = null;
+      }
+
+      try {
+        const artistRes = await getMyArtistProfile(auth.token);
+        artist = artistRes.profile;
+      } catch {
+        artist = null;
+      }
+
+      if (host) resolvedType = 'host';
+      else if (artist) resolvedType = 'artist';
+      else resolvedType = 'fan';
+
+      setHostProfile(host);
+      setArtistProfile(artist);
+      setUserType(resolvedType);
+      setProfileCompleted(Boolean(host || artist || resolvedType === 'fan'));
+
+      if (resolvedType === 'artist') {
+        setCurrentPage('venues');
+      } else if (resolvedType === 'host') {
+        setCurrentPage('artists');
+      } else {
+        setCurrentPage('shows');
+      }
+    } finally {
+      setIsLoadingProfiles(false);
     }
   };
 
   const handleProfileComplete = (userData: any) => {
-    setProfileCompleted(true);
-    // Save userData to backend in production
-    
-    // Navigate to appropriate page
-    if (userType === 'artist') {
-      setCurrentPage('venues');
-    } else if (userType === 'host') {
-      setCurrentPage('artists');
-    } else {
-      setCurrentPage('shows');
-    }
+    handleAccountCreationComplete({ ...userData, userType });
   };
 
   const handleSkipProfileCompletion = () => {
@@ -218,17 +223,100 @@ export default function App() {
     }
   };
 
-  const handleAccountCreationComplete = (userData: any) => {
-    setIsAuthenticated(true);
-    setProfileCompleted(true);
-    setUserType(userData.userType);
+  const handleAccountCreationComplete = async (userData: any) => {
+    if (!authToken) return;
+    setIsLoadingProfiles(true);
 
-    if (userData.userType === 'artist') {
-      setCurrentPage('venues');
-    } else if (userData.userType === 'host') {
-      setCurrentPage('artists');
-    } else {
-      setCurrentPage('shows');
+    try {
+      if (userData.email) {
+        await updateMe({ email: userData.email }, authToken);
+      }
+
+      if (userData.userType === 'artist') {
+        const genres = userData.genres
+          ? String(userData.genres)
+              .split(',')
+              .map((g: string) => g.trim())
+              .filter(Boolean)
+          : [];
+
+        const images = (userData.images ?? []).map((img: any) => img.url);
+        const profileImage = (userData.images ?? []).find((img: any) => img.isProfile)?.url;
+
+        const payload = {
+          displayName: userData.bandName || userData.name,
+          tagline: userData.tagline,
+          bio: userData.bio,
+          hometown: userData.hometown,
+          genres,
+          imageUrl: profileImage,
+          images,
+          memberCount: userData.memberCount ? Number(userData.memberCount) : undefined,
+          typicalDraw: userData.typicalDraw,
+          availableForHire: userData.availableForHire ?? false,
+          needsSleep: userData.needsSleep ?? false,
+          spotifyArtistId: userData.spotifyLink,
+          instagramUrl: userData.instagramLink,
+          websiteUrl: userData.websiteLink,
+          appleMusicUrl: userData.appleMusicLink,
+        };
+
+        let profile;
+        try {
+          profile = (await createArtistProfile(payload, authToken)).profile;
+        } catch {
+          profile = (await updateArtistProfile(payload, authToken)).profile;
+        }
+        setArtistProfile(profile);
+        setUserType('artist');
+        setProfileCompleted(true);
+        setCurrentPage('artistProfile');
+      } else if (userData.userType === 'host') {
+        const images = (userData.images ?? []).map((img: any) => img.url);
+        const profileImage = (userData.images ?? []).find((img: any) => img.isProfile)?.url;
+        const payload = {
+          displayName: userData.venueName || userData.name,
+          bio: userData.venueDescription,
+          city: userData.city,
+          neighborhood: userData.neighborhood,
+          capacity: userData.capacity ? Number(userData.capacity) : undefined,
+          venueType: userData.venueType,
+          artistSleep: userData.artistSleep ?? false,
+          sleepDetails: userData.sleepDetails,
+          topGenres: userData.topGenres
+            ? String(userData.topGenres)
+                .split(',')
+                .map((g: string) => g.trim())
+                .filter(Boolean)
+            : undefined,
+          images: profileImage ? [profileImage, ...images.filter((img: string) => img !== profileImage)] : images,
+          amenities: userData.amenities
+            ? String(userData.amenities)
+                .split(',')
+                .map((g: string) => g.trim())
+                .filter(Boolean)
+            : undefined,
+          availability: userData.availability,
+          responseTime: userData.responseTime,
+        };
+
+        let profile;
+        try {
+          profile = (await createHostProfile(payload, authToken)).profile;
+        } catch {
+          profile = (await updateHostProfile(payload, authToken)).profile;
+        }
+        setHostProfile(profile);
+        setUserType('host');
+        setProfileCompleted(true);
+        setCurrentPage('hostProfile');
+      } else {
+        setUserType('fan');
+        setProfileCompleted(true);
+        setCurrentPage('shows');
+      }
+    } finally {
+      setIsLoadingProfiles(false);
     }
   };
 
@@ -242,6 +330,12 @@ export default function App() {
     setUserType(null);
     setProfileCompleted(false);
     setAuthPage('home');
+    setAuthToken(null);
+    setArtistProfile(null);
+    setHostProfile(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
   };
 
   const handleCreateProposal = (conversationId: string) => {
@@ -260,52 +354,33 @@ export default function App() {
     setCurrentPage('messages');
   };
 
-  // Developer navigation handler
-  const handleDevNavigate = (page: string, devUserType?: 'artist' | 'host' | 'fan') => {
-    if (page === 'home') {
-      setIsAuthenticated(false);
-      setUserType(null);
-      setAuthPage('home');
-    } else if (page === 'login') {
-      setIsAuthenticated(false);
-      setSignupUserType(devUserType || null);
-      setAuthPage('login');
-    } else if (page === 'signup') {
-      setIsAuthenticated(false);
-      setSignupUserType(devUserType || 'fan');
-      setAuthPage('signup');
-    } else {
-      // Authenticated pages
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-        setUserType(devUserType || 'artist');
-        setProfileCompleted(true); // Assume complete for dev toolbar navigation
-      }
-      setCurrentPage(page as AppPage);
-    }
+  const handleEditProfile = () => {
+    if (!userType) return;
+    setEditingProfileType(userType);
+    setCurrentPage('editProfile');
   };
 
   // Get all unique genres and cities
   const allGenres = Array.from(
-    new Set(mockHouses.flatMap(house => house.topGenres))
+    new Set(houses.flatMap(house => house.topGenres))
   ).sort();
 
   const allCities = Array.from(
-    new Set(mockHouses.map(house => house.city))
+    new Set(houses.map(house => house.city))
   ).sort();
 
   const allArtistGenres = Array.from(
-    new Set(mockArtists.flatMap(artist => artist.genres))
+    new Set(artists.flatMap(artist => artist.genres))
   ).sort();
 
   const allArtistCities = Array.from(
-    new Set(mockArtists.map(artist => artist.hometown))
+    new Set(artists.map(artist => artist.hometown))
   ).sort();
 
-  const maxCapacity = Math.max(...mockHouses.map(h => h.capacity));
+  const maxCapacity = houses.length ? Math.max(...houses.map(h => h.capacity)) : 0;
 
   // Filter houses and artists
-  const filteredHouses = mockHouses.filter(house => {
+  const filteredHouses = houses.filter(house => {
     const matchesSearch = house.neighborhood.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          house.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          house.city.toLowerCase().includes(searchQuery.toLowerCase());
@@ -317,7 +392,7 @@ export default function App() {
     return matchesSearch && matchesGenre && matchesCity && matchesArtistSleep && matchesCapacity;
   });
 
-  const filteredArtists = mockArtists.filter(artist => {
+  const filteredArtists = artists.filter(artist => {
     const matchesSearch = artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          artist.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          artist.hometown.toLowerCase().includes(searchQuery.toLowerCase());
@@ -351,7 +426,6 @@ export default function App() {
       return (
         <>
           <HomePage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
-          <DeveloperToolbar onNavigate={handleDevNavigate} />
         </>
       );
     }
@@ -363,7 +437,6 @@ export default function App() {
             onComplete={handlePhoneAuthComplete} 
             onBack={() => setAuthPage('home')} 
           />
-          <DeveloperToolbar onNavigate={handleDevNavigate} />
         </>
       );
     }
@@ -376,7 +449,6 @@ export default function App() {
             onComplete={handleAccountCreationComplete}
             onBack={() => setAuthPage('home')}
           />
-          <DeveloperToolbar onNavigate={handleDevNavigate} />
         </>
       );
     }
@@ -389,7 +461,6 @@ export default function App() {
             onComplete={handleProfileComplete}
             onSkip={handleSkipProfileCompletion}
           />
-          <DeveloperToolbar onNavigate={handleDevNavigate} />
         </>
       );
     }
@@ -404,7 +475,6 @@ export default function App() {
           onComplete={handleProfileComplete}
           onSkip={handleSkipProfileCompletion}
         />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
@@ -419,7 +489,6 @@ export default function App() {
           onBack={() => setCurrentPage('shows')}
           onCreateProposal={userType === 'artist' ? handleCreateProposal : undefined}
         />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
@@ -432,7 +501,6 @@ export default function App() {
           onReject={handleRejectEvent}
           onBack={() => setCurrentPage('messages')}
         />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
@@ -441,26 +509,91 @@ export default function App() {
     return (
       <>
         <EventProposal onBack={() => setCurrentPage('messages')} />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
 
   if (currentPage === 'hostProfile') {
+    if (!hostProfile) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
+          No host profile found yet.
+        </div>
+      );
+    }
     return (
       <>
-        <HostProfile onBack={() => setCurrentPage(userType === 'artist' ? 'venues' : (userType === 'host' ? 'artists' : 'shows'))} />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
+        <HostProfile
+          profile={hostProfile}
+          onEdit={handleEditProfile}
+          onBack={() => setCurrentPage(userType === 'artist' ? 'venues' : (userType === 'host' ? 'artists' : 'shows'))}
+        />
       </>
     );
   }
 
   if (currentPage === 'artistProfile') {
+    if (!artistProfile) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
+          No artist profile found yet.
+        </div>
+      );
+    }
     return (
       <>
-        <ArtistProfile onBack={() => setCurrentPage(userType === 'host' ? 'artists' : (userType === 'artist' ? 'venues' : 'shows'))} />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
+        <ArtistProfile
+          profile={artistProfile}
+          onEdit={handleEditProfile}
+          onBack={() => setCurrentPage(userType === 'host' ? 'artists' : (userType === 'artist' ? 'venues' : 'shows'))}
+        />
       </>
+    );
+  }
+
+  if (currentPage === 'editProfile' && editingProfileType) {
+    const initialData =
+      editingProfileType === 'host' && hostProfile
+        ? {
+            userType: 'host',
+            name: hostProfile.displayName,
+            venueName: hostProfile.displayName,
+            venueDescription: hostProfile.bio ?? '',
+            city: hostProfile.city ?? '',
+            neighborhood: hostProfile.neighborhood ?? '',
+            capacity: hostProfile.capacity ?? '',
+            venueType: hostProfile.venueType ?? '',
+            artistSleep: hostProfile.artistSleep ?? false,
+            sleepDetails: hostProfile.sleepDetails ?? '',
+            topGenres: (hostProfile.topGenres ?? []).join(', '),
+            amenities: (hostProfile.amenities ?? []).join(', '),
+            images: (hostProfile.images ?? []).map((url, index) => ({ id: url, url, isProfile: index === 0 })),
+          }
+        : editingProfileType === 'artist' && artistProfile
+          ? {
+              userType: 'artist',
+              name: artistProfile.displayName,
+              bandName: artistProfile.displayName,
+              tagline: artistProfile.tagline ?? '',
+              bio: artistProfile.bio ?? '',
+              hometown: artistProfile.hometown ?? '',
+              genres: (artistProfile.genres ?? []).join(', '),
+              images: (artistProfile.images ?? []).map((url, index) => ({ id: url, url, isProfile: url === artistProfile.imageUrl || index === 0 })),
+              spotifyLink: artistProfile.spotifyArtistId ?? '',
+              instagramLink: artistProfile.instagramUrl ?? '',
+              websiteLink: artistProfile.websiteUrl ?? '',
+              appleMusicLink: artistProfile.appleMusicUrl ?? '',
+            }
+          : null;
+
+    return (
+      <AccountCreation
+        userType={editingProfileType as 'artist' | 'host' | 'fan'}
+        mode="edit"
+        initialData={initialData ?? undefined}
+        onComplete={handleAccountCreationComplete}
+        onBack={() => setCurrentPage(editingProfileType === 'host' ? 'hostProfile' : 'artistProfile')}
+      />
     );
   }
 
@@ -474,7 +607,6 @@ export default function App() {
             onBack={() => setCurrentPage('shows')}
           />
         </div>
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
@@ -483,7 +615,6 @@ export default function App() {
     return (
       <>
         <EventDashboard userType={userType as 'artist' | 'host'} onBack={() => setCurrentPage('shows')} />
-        <DeveloperToolbar onNavigate={handleDevNavigate} />
       </>
     );
   }
@@ -582,7 +713,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">{/* Added pb-32 for developer toolbar space */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Conditional Page Rendering */}
         {currentPage === 'venues' ? (
           <>
@@ -789,11 +920,10 @@ export default function App() {
             )}
           </>
         ) : (
-          <ShowsPage onBuyTickets={handleBuyTickets} />
+          <ShowsPage onBuyTickets={handleBuyTickets} shows={[]} />
         )}
       </div>
       
-      <DeveloperToolbar onNavigate={handleDevNavigate} />
     </div>
   );
 }

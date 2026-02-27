@@ -5,6 +5,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "./db";
+import { firebaseAuth } from "./firebase";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -41,6 +42,13 @@ const listQuerySchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+const firebaseLoginSchema = z.object({
+  idToken: z.string().min(1),
+  email: z.string().email().optional(),
+});
+const updateMeSchema = z.object({
+  email: z.string().email().optional(),
 });
 const createArtistProfileSchema = z.object({
   displayName: z.string().min(1),
@@ -198,6 +206,51 @@ async function main() {
     });
   });
 
+  app.post("/auth/firebase", async (req, reply) => {
+    const parsed = firebaseLoginSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    const { idToken, email } = parsed.data;
+    let decoded;
+    try {
+      decoded = await firebaseAuth.verifyIdToken(idToken);
+    } catch {
+      return reply.code(401).send({ error: "Invalid Firebase token" });
+    }
+
+    const phoneNumber = decoded.phone_number;
+    const firebaseUid = decoded.uid;
+    if (!phoneNumber) {
+      return reply.code(400).send({ error: "Phone number missing on Firebase user" });
+    }
+
+    let user =
+      (await prisma.user.findUnique({ where: { firebaseUid } })) ??
+      (await prisma.user.findUnique({ where: { phoneNumber } }));
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: email ?? null,
+          phoneNumber,
+          firebaseUid,
+          roles: ["FAN"],
+        },
+      });
+    } else if (email && !user.email) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { email },
+      });
+    }
+
+    const token = await reply.jwtSign({ sub: user.id });
+    return reply.send({
+      user: { id: user.id, email: user.email, roles: user.roles, createdAt: user.createdAt },
+      token,
+    });
+  });
+
   // Authentication decorator
   (app as any).decorate("authenticate", async (req: any, reply: any) => {
     try {
@@ -212,6 +265,28 @@ async function main() {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      select: { id: true, email: true, roles: true, createdAt: true },
+    });
+
+    return { user };
+  });
+
+  app.patch("/me", { preHandler: (app as any).authenticate }, async (req: any, reply: any) => {
+    const parsed = updateMeSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    const userId = req.user.sub as string;
+    const { email } = parsed.data;
+    if (!email) return reply.code(400).send({ error: "No fields to update" });
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing && existing.id !== userId) {
+      return reply.code(409).send({ error: "Email already in use" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { email },
       select: { id: true, email: true, roles: true, createdAt: true },
     });
 
@@ -275,6 +350,13 @@ async function main() {
   app.get("/artist/:id", async (req: any, reply: any) => {
     const { id } = req.params;
     const profile = await prisma.artistProfile.findUnique({ where: { id } });
+    if (!profile) return reply.code(404).send({ error: "Not found" });
+    return { profile };
+  });
+
+  app.get("/artist/me", { preHandler: (app as any).authenticate }, async (req: any, reply: any) => {
+    const userId = getUserId(req);
+    const profile = await prisma.artistProfile.findUnique({ where: { userId } });
     if (!profile) return reply.code(404).send({ error: "Not found" });
     return { profile };
   });
@@ -383,6 +465,13 @@ async function main() {
   app.get("/host/:id", async (req: any, reply: any) => {
     const { id } = req.params;
     const profile = await prisma.hostProfile.findUnique({ where: { id } });
+    if (!profile) return reply.code(404).send({ error: "Not found" });
+    return { profile };
+  });
+
+  app.get("/host/me", { preHandler: (app as any).authenticate }, async (req: any, reply: any) => {
+    const userId = getUserId(req);
+    const profile = await prisma.hostProfile.findUnique({ where: { userId } });
     if (!profile) return reply.code(404).send({ error: "Not found" });
     return { profile };
   });

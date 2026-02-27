@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Textarea } from './ui/textarea';
-import { Upload, X, Check, Music, Instagram, Globe, CheckCircle } from 'lucide-react';
+import { Upload, X, Music, Instagram, Globe, CheckCircle } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { CITY_OPTIONS, neighborhoodsForCity } from '../data/locations';
 
 interface AccountCreationProps {
   userType: 'artist' | 'host' | 'fan';
   onComplete: (userData: any) => void;
   onBack: () => void;
+  mode?: 'create' | 'edit';
+  initialData?: any;
 }
 
 interface UploadedImage {
@@ -19,36 +22,54 @@ interface UploadedImage {
   isProfile: boolean;
 }
 
-export function AccountCreation({ userType, onComplete, onBack }: AccountCreationProps) {
+export function AccountCreation({ userType, onComplete, onBack, mode = 'create', initialData }: AccountCreationProps) {
   const [step, setStep] = useState(1);
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>(() => {
+    const images = initialData?.images ?? [];
+    if (images.length > 0 && !images.some((img: UploadedImage) => img.isProfile)) {
+      images[0].isProfile = true;
+    }
+    return images;
+  });
+  const [videoFile, setVideoFile] = useState<File | null>(initialData?.video ?? null);
+  const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: '',
+    email: initialData?.email ?? '',
+    name: initialData?.name ?? '',
+    tagline: initialData?.tagline ?? '',
     // Artist specific
-    bandName: '',
-    hometown: '',
-    genres: '',
-    bio: '',
-    spotifyLink: '',
-    appleMusicLink: '',
-    instagramLink: '',
-    websiteLink: '',
+    bandName: initialData?.bandName ?? '',
+    hometown: initialData?.hometown ?? '',
+    genres: initialData?.genres ?? '',
+    bio: initialData?.bio ?? '',
+    spotifyLink: initialData?.spotifyLink ?? '',
+    appleMusicLink: initialData?.appleMusicLink ?? '',
+    instagramLink: initialData?.instagramLink ?? '',
+    websiteLink: initialData?.websiteLink ?? '',
     // Host specific
-    venueName: '',
-    neighborhood: '',
-    city: '',
-    capacity: '',
-    venueDescription: '',
+    venueName: initialData?.venueName ?? '',
+    neighborhood: initialData?.neighborhood ?? '',
+    city: initialData?.city ?? '',
+    capacity: initialData?.capacity ?? '',
+    venueDescription: initialData?.venueDescription ?? '',
+    venueType: initialData?.venueType ?? '',
+    artistSleep: initialData?.artistSleep ?? false,
+    sleepDetails: initialData?.sleepDetails ?? '',
+    topGenres: initialData?.topGenres ?? '',
+    amenities: initialData?.amenities ?? '',
     // Fan specific
-    favoriteGenres: '',
-    favoriteArtists: '',
-    userCity: '',
-    university: '',
+    favoriteGenres: initialData?.favoriteGenres ?? '',
+    favoriteArtists: initialData?.favoriteArtists ?? '',
+    userCity: initialData?.userCity ?? '',
+    university: initialData?.university ?? '',
   });
+
+  const neighborhoodOptions = useMemo(
+    () => neighborhoodsForCity(formData.city || formData.userCity || formData.hometown),
+    [formData.city, formData.userCity, formData.hometown]
+  );
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -70,6 +91,35 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+    }
+  };
+
+  const handlePhotoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDraggingPhotos(false);
+    const files = e.dataTransfer.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newImage: UploadedImage = {
+            id: Math.random().toString(36).substr(2, 9),
+            url: reader.result as string,
+            isProfile: uploadedImages.length === 0,
+          };
+          setUploadedImages((prev) => [...prev, newImage]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleVideoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDraggingVideo(false);
+    const file = e.dataTransfer.files?.[0];
     if (file) {
       setVideoFile(file);
     }
@@ -134,7 +184,7 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
 
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-black text-foreground mb-2">
-            Create Your {getUserTypeTitle()} Account
+            {mode === 'edit' ? `Edit Your ${getUserTypeTitle()} Profile` : `Create Your ${getUserTypeTitle()} Account`}
           </h1>
           <p className="text-muted-foreground">
             {step === 1 ? 'Basic Information' : userType === 'fan' ? 'Your Music Preferences' : 'Media & Links'}
@@ -172,27 +222,15 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                   <Input
                     id="email"
                     type="email"
-                    required
+                    required={mode === 'create'}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="bg-input-background border-border"
                     placeholder="you@example.com"
                   />
-                </div>
-
-                <div>
-                  <Label htmlFor="password" className="text-foreground mb-2">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="••••••••"
-                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    We’ll only verify your email later if you’re hosting, inviting, or ticketing.
+                  </p>
                 </div>
 
                 {/* Artist Specific Fields */}
@@ -217,15 +255,18 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                       <Label htmlFor="hometown" className="text-foreground mb-2">
                         Hometown
                       </Label>
-                      <Input
+                      <select
                         id="hometown"
-                        type="text"
                         required
                         value={formData.hometown}
                         onChange={(e) => setFormData({ ...formData, hometown: e.target.value })}
-                        className="bg-input-background border-border"
-                        placeholder="Brooklyn, NY"
-                      />
+                        className="w-full bg-input-background border border-border rounded-md px-3 py-2"
+                      >
+                        <option value="">Select a city</option>
+                        {CITY_OPTIONS.map((city) => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -283,30 +324,36 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                         <Label htmlFor="neighborhood" className="text-foreground mb-2">
                           Neighborhood
                         </Label>
-                        <Input
+                        <select
                           id="neighborhood"
-                          type="text"
                           required
                           value={formData.neighborhood}
                           onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                          className="bg-input-background border-border"
-                          placeholder="Williamsburg"
-                        />
+                          className="w-full bg-input-background border border-border rounded-md px-3 py-2"
+                        >
+                          <option value="">Select a neighborhood</option>
+                          {neighborhoodOptions.map((neighborhood) => (
+                            <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                          ))}
+                        </select>
                       </div>
 
                       <div>
                         <Label htmlFor="city" className="text-foreground mb-2">
                           City
                         </Label>
-                        <Input
+                        <select
                           id="city"
-                          type="text"
                           required
                           value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          className="bg-input-background border-border"
-                          placeholder="Brooklyn, NY"
-                        />
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value, neighborhood: '' })}
+                          className="w-full bg-input-background border border-border rounded-md px-3 py-2"
+                        >
+                          <option value="">Select a city</option>
+                          {CITY_OPTIONS.map((city) => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -335,7 +382,7 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                         value={formData.venueDescription}
                         onChange={(e) => setFormData({ ...formData, venueDescription: e.target.value })}
                         className="bg-input-background border-border resize-none"
-                        placeholder="Describe your space..."
+                        placeholder="We’ve got a cozy living room that fits ~40 people, a sturdy coffee table for merch, and neighbors who love indie folk (as long as we’re done by 10). BYOB, street parking, and a very friendly cat."
                         rows={4}
                       />
                     </div>
@@ -364,22 +411,15 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                           alt="Upload" 
                           className="w-full h-32 object-cover rounded-lg border-2 border-border"
                         />
-                        {img.isProfile && (
-                          <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
-                            Profile
-                          </Badge>
-                        )}
+                        <label className="absolute top-2 left-2 flex items-center gap-2 text-xs bg-card/90 border border-border rounded px-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={img.isProfile}
+                            onChange={() => setProfileImage(img.id)}
+                          />
+                          <span>Profile</span>
+                        </label>
                         <div className="absolute inset-0 bg-card/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                          {!img.isProfile && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => setProfileImage(img.id)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            >
-                              Set Profile
-                            </Button>
-                          )}
                           <Button
                             type="button"
                             size="sm"
@@ -393,11 +433,21 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                     ))}
                   </div>
 
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-secondary/20 hover:bg-secondary/40 transition-colors">
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                      isDraggingPhotos ? 'border-primary bg-primary/10' : 'border-border bg-secondary/20 hover:bg-secondary/40'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingPhotos(true);
+                    }}
+                    onDragLeave={() => setIsDraggingPhotos(false)}
+                    onDrop={handlePhotoDrop}
+                  >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
-                        Click to upload photos
+                        Click to upload photos or drag & drop
                       </p>
                     </div>
                     <input
@@ -438,11 +488,21 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                       </Button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-secondary/20 hover:bg-secondary/40 transition-colors">
+                    <label
+                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        isDraggingVideo ? 'border-primary bg-primary/10' : 'border-border bg-secondary/20 hover:bg-secondary/40'
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingVideo(true);
+                      }}
+                      onDragLeave={() => setIsDraggingVideo(false)}
+                      onDrop={handleVideoDrop}
+                    >
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          Click to upload video
+                          Click to upload video or drag & drop
                         </p>
                       </div>
                       <input
@@ -585,15 +645,18 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
                   <Label htmlFor="userCity" className="text-foreground mb-2">
                     City
                   </Label>
-                  <Input
+                  <select
                     id="userCity"
-                    type="text"
                     required
                     value={formData.userCity}
                     onChange={(e) => setFormData({ ...formData, userCity: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="Brooklyn, NY"
-                  />
+                    className="w-full bg-input-background border border-border rounded-md px-3 py-2"
+                  >
+                    <option value="">Select a city</option>
+                    {CITY_OPTIONS.map((city) => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -616,7 +679,7 @@ export function AccountCreation({ userType, onComplete, onBack }: AccountCreatio
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6"
             >
-              {step === 1 ? 'Continue' : 'Create Account'}
+              {mode === 'edit' ? 'Save Changes' : step === 1 ? 'Continue' : 'Create Account'}
             </Button>
           </form>
         </Card>
