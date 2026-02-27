@@ -148,6 +148,8 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 </div>
               </div>
 
+              <div id="recaptcha-container" className="flex justify-center" />
+
               {error && (
                 <p className="text-sm text-red-500 font-['Times',serif]">{error}</p>
               )}
@@ -206,7 +208,6 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
             </form>
           )}
 
-          <div id="recaptcha-container" className="flex justify-center mt-6" />
         </div>
       </div>
     </div>
