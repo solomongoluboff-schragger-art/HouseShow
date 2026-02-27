@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ArrowLeft } from 'lucide-react';
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 interface PhoneAuthProps {
   onComplete: (phoneNumber: string, isNewUser: boolean) => void;
@@ -12,18 +14,77 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [step, setStep] = useState<'phone' | 'verify'>('phone');
-  const [isNewUser] = useState(true); // Mock - would come from backend
+  const [countryCode, setCountryCode] = useState('+1');
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const e164Phone = useMemo(() => {
+    const digits = phoneNumber.replace(/[^\d]/g, '');
+    return `${countryCode}${digits}`;
+  }, [countryCode, phoneNumber]);
+
+  useEffect(() => {
+    setError(null);
+  }, [phoneNumber, verificationCode, step]);
+
+  useEffect(() => {
+    if (step !== 'phone') return;
+    if ((auth as any)._recaptchaVerifier) return;
+    (auth as any)._recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      'recaptcha-container',
+      { size: 'normal' }
+    );
+    (auth as any)._recaptchaVerifier.render();
+  }, [step]);
 
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In production, this would send SMS verification code
-    setStep('verify');
+    if (!e164Phone || e164Phone.length < 8) {
+      setError('Please enter a valid phone number.');
+      return;
+    }
+
+    const verifier = (auth as any)._recaptchaVerifier as RecaptchaVerifier | undefined;
+    if (!verifier) {
+      setError('reCAPTCHA not ready. Please try again.');
+      return;
+    }
+
+    setIsSending(true);
+    signInWithPhoneNumber(auth, e164Phone, verifier)
+      .then((result) => {
+        setConfirmation(result);
+        setStep('verify');
+      })
+      .catch((err) => {
+        setError(err?.message ?? 'Failed to send verification code.');
+      })
+      .finally(() => setIsSending(false));
   };
 
   const handleVerifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In production, this would verify the code
-    onComplete(phoneNumber, isNewUser);
+    if (!confirmation) {
+      setError('Verification session expired. Please try again.');
+      setStep('phone');
+      return;
+    }
+
+    setIsVerifying(true);
+    confirmation
+      .confirm(verificationCode)
+      .then((credential) => {
+        const metadata = credential.user.metadata;
+        const isNewUser = metadata.creationTime === metadata.lastSignInTime;
+        onComplete(e164Phone, isNewUser);
+      })
+      .catch((err) => {
+        setError(err?.message ?? 'Invalid verification code.');
+      })
+      .finally(() => setIsVerifying(false));
   };
 
   return (
@@ -65,6 +126,8 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 <div className="flex gap-3">
                   <select 
                     className="bg-background border border-border text-foreground rounded-sm px-3 py-3 focus:outline-none focus:border-primary font-['Times',serif]"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
                   >
                     <option value="+1">🇺🇸 +1</option>
                     <option value="+44">🇬🇧 +44</option>
@@ -82,11 +145,18 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 </div>
               </div>
 
+              <div id="recaptcha-container" className="flex justify-center" />
+
+              {error && (
+                <p className="text-sm text-red-500 font-['Times',serif]">{error}</p>
+              )}
+
               <Button 
                 type="submit"
+                disabled={isSending}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-['Teko',sans-serif] text-xl py-6 rounded-sm transition-all duration-200"
               >
-                Next
+                {isSending ? 'Sending...' : 'Next'}
               </Button>
 
               <p className="text-xs text-muted-foreground text-center font-['Times',serif]">
@@ -111,11 +181,16 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 />
               </div>
 
+              {error && (
+                <p className="text-sm text-red-500 font-['Times',serif]">{error}</p>
+              )}
+
               <Button 
                 type="submit"
+                disabled={isVerifying}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-['Teko',sans-serif] text-xl py-6 rounded-sm transition-all duration-200"
               >
-                Verify & Continue
+                {isVerifying ? 'Verifying...' : 'Verify & Continue'}
               </Button>
 
               <div className="text-center">
