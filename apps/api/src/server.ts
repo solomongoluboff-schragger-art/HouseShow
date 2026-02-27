@@ -24,11 +24,11 @@ async function getOptionalUserId(req: any): Promise<string | null> {
   }
 }
 
-function addRole(roles: string[], role: string): string[] {
+function addRole(roles: Prisma.UserRole[], role: Prisma.UserRole): Prisma.UserRole[] {
   return roles.includes(role) ? roles : [...roles, role];
 }
 
-function removeRole(roles: string[], role: string): string[] {
+function removeRole(roles: Prisma.UserRole[], role: Prisma.UserRole): Prisma.UserRole[] {
   return roles.filter((existing) => existing !== role);
 }
 
