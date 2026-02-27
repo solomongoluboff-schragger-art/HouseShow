@@ -6,6 +6,7 @@
     "apps/*"
   ],
   "scripts": {
+    "build": "npm run build --workspace apps/web",
     "dev": "sh -c \"npm --prefix apps/api run dev & npm --prefix apps/web run dev\"",
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev"
