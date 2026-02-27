@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 
 const signupSchema = z.object({
@@ -513,7 +514,7 @@ async function main() {
     "/conversations/:id",
     { preHandler: (app as any).authenticate },
     async (req: any, reply: any) => {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const userId = getUserId(req);
       const conversation = await getConversationForUser(id, userId);
       if (conversation === "forbidden") return reply.code(403).send({ error: "Forbidden" });
@@ -589,63 +590,48 @@ async function main() {
         parsedDate = date;
       }
 
-      const createData = {
-        conversationId: id,
+      const createData: Prisma.ProposalCreateInput = {
+        conversation: { connect: { id } },
         status: "DRAFT",
-        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
-        ...(parsedDate !== undefined ? { date: parsedDate } : {}),
-        ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
-        ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
-        ...(parsed.data.expectedAttendance !== undefined
-          ? { expectedAttendance: parsed.data.expectedAttendance }
-          : {}),
-        ...(parsed.data.setLengthMinutes !== undefined
-          ? { setLengthMinutes: parsed.data.setLengthMinutes }
-          : {}),
-        ...(parsed.data.loadInMinutes !== undefined
-          ? { loadInMinutes: parsed.data.loadInMinutes }
-          : {}),
-        ...(parsed.data.technicalRequirements !== undefined
-          ? { technicalRequirements: parsed.data.technicalRequirements }
-          : {}),
-        ...(parsed.data.additionalNotes !== undefined
-          ? { additionalNotes: parsed.data.additionalNotes }
-          : {}),
         visibility: parsed.data.visibility ?? "PUBLIC",
         ticketingEnabled: parsed.data.ticketingEnabled ?? false,
-        ...(parsed.data.ticketPriceCents !== undefined
-          ? { ticketPriceCents: parsed.data.ticketPriceCents }
-          : {}),
       };
 
-      const updateData = {
-        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
-        ...(parsedDate !== undefined ? { date: parsedDate } : {}),
-        ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
-        ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
-        ...(parsed.data.expectedAttendance !== undefined
-          ? { expectedAttendance: parsed.data.expectedAttendance }
-          : {}),
-        ...(parsed.data.setLengthMinutes !== undefined
-          ? { setLengthMinutes: parsed.data.setLengthMinutes }
-          : {}),
-        ...(parsed.data.loadInMinutes !== undefined
-          ? { loadInMinutes: parsed.data.loadInMinutes }
-          : {}),
-        ...(parsed.data.technicalRequirements !== undefined
-          ? { technicalRequirements: parsed.data.technicalRequirements }
-          : {}),
-        ...(parsed.data.additionalNotes !== undefined
-          ? { additionalNotes: parsed.data.additionalNotes }
-          : {}),
-        ...(parsed.data.visibility !== undefined ? { visibility: parsed.data.visibility } : {}),
-        ...(parsed.data.ticketingEnabled !== undefined
-          ? { ticketingEnabled: parsed.data.ticketingEnabled }
-          : {}),
-        ...(parsed.data.ticketPriceCents !== undefined
-          ? { ticketPriceCents: parsed.data.ticketPriceCents }
-          : {}),
-      };
+      if (parsed.data.title !== undefined) createData.title = parsed.data.title;
+      if (parsedDate !== undefined) createData.date = parsedDate;
+      if (parsed.data.startTime !== undefined) createData.startTime = parsed.data.startTime;
+      if (parsed.data.description !== undefined) createData.description = parsed.data.description;
+      if (parsed.data.expectedAttendance !== undefined)
+        createData.expectedAttendance = parsed.data.expectedAttendance;
+      if (parsed.data.setLengthMinutes !== undefined)
+        createData.setLengthMinutes = parsed.data.setLengthMinutes;
+      if (parsed.data.loadInMinutes !== undefined) createData.loadInMinutes = parsed.data.loadInMinutes;
+      if (parsed.data.technicalRequirements !== undefined)
+        createData.technicalRequirements = parsed.data.technicalRequirements;
+      if (parsed.data.additionalNotes !== undefined)
+        createData.additionalNotes = parsed.data.additionalNotes;
+      if (parsed.data.ticketPriceCents !== undefined)
+        createData.ticketPriceCents = parsed.data.ticketPriceCents;
+
+      const updateData: Prisma.ProposalUpdateInput = {};
+      if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+      if (parsedDate !== undefined) updateData.date = parsedDate;
+      if (parsed.data.startTime !== undefined) updateData.startTime = parsed.data.startTime;
+      if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+      if (parsed.data.expectedAttendance !== undefined)
+        updateData.expectedAttendance = parsed.data.expectedAttendance;
+      if (parsed.data.setLengthMinutes !== undefined)
+        updateData.setLengthMinutes = parsed.data.setLengthMinutes;
+      if (parsed.data.loadInMinutes !== undefined) updateData.loadInMinutes = parsed.data.loadInMinutes;
+      if (parsed.data.technicalRequirements !== undefined)
+        updateData.technicalRequirements = parsed.data.technicalRequirements;
+      if (parsed.data.additionalNotes !== undefined)
+        updateData.additionalNotes = parsed.data.additionalNotes;
+      if (parsed.data.visibility !== undefined) updateData.visibility = parsed.data.visibility;
+      if (parsed.data.ticketingEnabled !== undefined)
+        updateData.ticketingEnabled = parsed.data.ticketingEnabled;
+      if (parsed.data.ticketPriceCents !== undefined)
+        updateData.ticketPriceCents = parsed.data.ticketPriceCents;
 
       const proposal = await prisma.proposal.upsert({
         where: { conversationId: id },
