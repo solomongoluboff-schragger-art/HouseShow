@@ -8,6 +8,7 @@ COPY apps/api/tsconfig.json ./
 COPY apps/api/prisma.config.ts ./
 COPY apps/api/prisma ./prisma
 COPY apps/api/src ./src
+RUN npx prisma generate
 RUN npm run build
 
 FROM deps AS prod-deps

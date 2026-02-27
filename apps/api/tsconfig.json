@@ -11,6 +11,8 @@
     "target": "esnext",
     "types": ["node"],
     "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -23,6 +25,7 @@
 
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
+    "noImplicitAny": false,
     "exactOptionalPropertyTypes": false,
 
     // Style Options

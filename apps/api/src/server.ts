@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "./db";
 
 const signupSchema = z.object({
@@ -24,11 +24,11 @@ async function getOptionalUserId(req: any): Promise<string | null> {
   }
 }
 
-function addRole(roles: Prisma.UserRole[], role: Prisma.UserRole): Prisma.UserRole[] {
+function addRole(roles: UserRole[], role: UserRole): UserRole[] {
   return roles.includes(role) ? roles : [...roles, role];
 }
 
-function removeRole(roles: Prisma.UserRole[], role: Prisma.UserRole): Prisma.UserRole[] {
+function removeRole(roles: UserRole[], role: UserRole): UserRole[] {
   return roles.filter((existing) => existing !== role);
 }
 
