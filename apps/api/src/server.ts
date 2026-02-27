@@ -589,42 +589,63 @@ async function main() {
         parsedDate = date;
       }
 
-      const stripUndefined = <T extends Record<string, unknown>>(obj: T) =>
-        Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as {
-          [K in keyof T as T[K] extends undefined ? never : K]: Exclude<T[K], undefined>;
-        };
-
-      const createData = stripUndefined({
+      const createData = {
         conversationId: id,
         status: "DRAFT",
-        title: parsed.data.title,
-        date: parsedDate,
-        startTime: parsed.data.startTime,
-        description: parsed.data.description,
-        expectedAttendance: parsed.data.expectedAttendance,
-        setLengthMinutes: parsed.data.setLengthMinutes,
-        loadInMinutes: parsed.data.loadInMinutes,
-        technicalRequirements: parsed.data.technicalRequirements,
-        additionalNotes: parsed.data.additionalNotes,
+        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+        ...(parsedDate !== undefined ? { date: parsedDate } : {}),
+        ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
+        ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+        ...(parsed.data.expectedAttendance !== undefined
+          ? { expectedAttendance: parsed.data.expectedAttendance }
+          : {}),
+        ...(parsed.data.setLengthMinutes !== undefined
+          ? { setLengthMinutes: parsed.data.setLengthMinutes }
+          : {}),
+        ...(parsed.data.loadInMinutes !== undefined
+          ? { loadInMinutes: parsed.data.loadInMinutes }
+          : {}),
+        ...(parsed.data.technicalRequirements !== undefined
+          ? { technicalRequirements: parsed.data.technicalRequirements }
+          : {}),
+        ...(parsed.data.additionalNotes !== undefined
+          ? { additionalNotes: parsed.data.additionalNotes }
+          : {}),
         visibility: parsed.data.visibility ?? "PUBLIC",
         ticketingEnabled: parsed.data.ticketingEnabled ?? false,
-        ticketPriceCents: parsed.data.ticketPriceCents,
-      });
+        ...(parsed.data.ticketPriceCents !== undefined
+          ? { ticketPriceCents: parsed.data.ticketPriceCents }
+          : {}),
+      };
 
-      const updateData = stripUndefined({
-        title: parsed.data.title,
-        date: parsedDate,
-        startTime: parsed.data.startTime,
-        description: parsed.data.description,
-        expectedAttendance: parsed.data.expectedAttendance,
-        setLengthMinutes: parsed.data.setLengthMinutes,
-        loadInMinutes: parsed.data.loadInMinutes,
-        technicalRequirements: parsed.data.technicalRequirements,
-        additionalNotes: parsed.data.additionalNotes,
-        visibility: parsed.data.visibility,
-        ticketingEnabled: parsed.data.ticketingEnabled,
-        ticketPriceCents: parsed.data.ticketPriceCents,
-      });
+      const updateData = {
+        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+        ...(parsedDate !== undefined ? { date: parsedDate } : {}),
+        ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
+        ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+        ...(parsed.data.expectedAttendance !== undefined
+          ? { expectedAttendance: parsed.data.expectedAttendance }
+          : {}),
+        ...(parsed.data.setLengthMinutes !== undefined
+          ? { setLengthMinutes: parsed.data.setLengthMinutes }
+          : {}),
+        ...(parsed.data.loadInMinutes !== undefined
+          ? { loadInMinutes: parsed.data.loadInMinutes }
+          : {}),
+        ...(parsed.data.technicalRequirements !== undefined
+          ? { technicalRequirements: parsed.data.technicalRequirements }
+          : {}),
+        ...(parsed.data.additionalNotes !== undefined
+          ? { additionalNotes: parsed.data.additionalNotes }
+          : {}),
+        ...(parsed.data.visibility !== undefined ? { visibility: parsed.data.visibility } : {}),
+        ...(parsed.data.ticketingEnabled !== undefined
+          ? { ticketingEnabled: parsed.data.ticketingEnabled }
+          : {}),
+        ...(parsed.data.ticketPriceCents !== undefined
+          ? { ticketPriceCents: parsed.data.ticketPriceCents }
+          : {}),
+      };
 
       const proposal = await prisma.proposal.upsert({
         where: { conversationId: id },
