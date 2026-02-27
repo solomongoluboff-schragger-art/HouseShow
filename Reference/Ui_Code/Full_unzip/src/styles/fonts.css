@@ -1,0 +1,17 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500;600;700&display=swap');
+
+/* Cambria is a system font, no import needed */
+
+:root {
+  --font-primary: 'Teko', sans-serif;
+  --font-secondary: 'Cambria', serif;
+}
+
+body {
+  font-family: var(--font-secondary);
+}
+
+h1, h2, h3, h4, h5, h6, button, .font-primary {
+  font-family: var(--font-primary);
+}

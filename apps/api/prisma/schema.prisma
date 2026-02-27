@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  FAN
+  ARTIST
+  HOST
+  ADMIN
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+}
+
+enum ProposalVisibility {
+  PUBLIC
+  LINK_ONLY
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // auth placeholder (we’ll implement later)
+  passwordHash String?
+
+  roles UserRole[] @default([FAN])
+
+  artistProfile ArtistProfile?
+  hostProfile   HostProfile?
+  conversationsAsHost   Conversation[] @relation("HostConversations")
+  conversationsAsArtist Conversation[] @relation("ArtistConversations")
+  messages              Message[]      @relation("UserMessages")
+  tickets               Ticket[]
+}
+
+model ArtistProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  displayName String
+  tagline     String?
+  bio         String?
+  hometown    String?
+  genres      String[] @default([])
+  imageUrl    String?
+  images      String[] @default([])
+  memberCount Int?
+  rating      Float?
+  totalShows  Int?
+  typicalDraw String?
+  availableForHire Boolean @default(false)
+  needsSleep  Boolean @default(false)
+  upcomingTourDates Json?
+  responseTime String?
+
+  // Verification (Spotify OAuth / token idea in your deck)
+  spotifyArtistId String?
+  instagramUrl    String?
+  websiteUrl      String?
+  bandcampUrl     String?
+  appleMusicUrl   String?
+  verifiedAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events Event[] @relation("ArtistEvents")
+}
+
+model HostProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  displayName  String
+  bio          String?
+  city         String?
+  neighborhood String?
+  capacity     Int?
+  venueType    String?
+  artistSleep  Boolean @default(false)
+  sleepDetails String?
+  topGenres    String[] @default([])
+  images       String[] @default([])
+  amenities    String[] @default([])
+  availability String?
+  responseTime String?
+  rating       Float?
+  totalShows   Int?
+
+  // Verification (video tour idea in your deck)
+  videoVerificationUrl String?
+  verifiedAt           DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events Event[] @relation("HostEvents")
+}
+
+model Conversation {
+  id           String   @id @default(cuid())
+  hostUserId   String
+  artistUserId String
+  createdAt    DateTime @default(now())
+
+  hostUser   User     @relation("HostConversations", fields: [hostUserId], references: [id], onDelete: Cascade)
+  artistUser User     @relation("ArtistConversations", fields: [artistUserId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  proposal   Proposal?
+
+  @@unique([hostUserId, artistUserId], name: "hostUserId_artistUserId")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderUserId   String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderUser   User         @relation("UserMessages", fields: [senderUserId], references: [id], onDelete: Cascade)
+}
+
+model Proposal {
+  id                 String            @id @default(cuid())
+  conversationId     String            @unique
+  status             ProposalStatus    @default(DRAFT)
+  title              String?
+  date               DateTime?
+  startTime          String?
+  description        String?
+  expectedAttendance Int?
+  setLengthMinutes   Int?
+  loadInMinutes      Int?
+  technicalRequirements String?
+  additionalNotes    String?
+  visibility         ProposalVisibility @default(PUBLIC)
+  ticketingEnabled   Boolean           @default(false)
+  ticketPriceCents   Int?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  event        Event?
+}
+
+model Event {
+  id              String            @id @default(cuid())
+  hostProfileId   String?
+  artistProfileId String?
+  proposalId      String            @unique
+  publishedAt     DateTime
+  visibility      ProposalVisibility
+  ticketingEnabled Boolean
+  ticketPriceCents Int?
+  capacity        Int?
+  address         String?
+
+  hostProfile   HostProfile? @relation("HostEvents", fields: [hostProfileId], references: [id], onDelete: SetNull)
+  artistProfile ArtistProfile? @relation("ArtistEvents", fields: [artistProfileId], references: [id], onDelete: SetNull)
+  proposal      Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init

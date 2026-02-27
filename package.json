@@ -1,0 +1,16 @@
+{
+  "name": "houseshow",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "sh -c \"npm --prefix apps/api run dev & npm --prefix apps/web run dev\"",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

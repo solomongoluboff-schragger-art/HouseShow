@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "ui:snap": "playwright test tests/ui-snap.spec.js --config playwright.config.js --retries=2"
+  }
+}
