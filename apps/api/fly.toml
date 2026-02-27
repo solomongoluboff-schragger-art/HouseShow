@@ -1,8 +1,8 @@
-app = "houseshow-api"
+app = "houseshow"
 primary_region = "iad"
 
 [build]
-  dockerfile = "apps/api/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "3001"
