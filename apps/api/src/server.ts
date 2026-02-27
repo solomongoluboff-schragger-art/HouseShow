@@ -284,13 +284,14 @@ async function main() {
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const { q, take = 50, skip = 0 } = parsed.data;
+    const queryMode: Prisma.QueryMode = "insensitive";
     const where = q
       ? {
           OR: [
-            { displayName: { contains: q, mode: "insensitive" } },
-            { bio: { contains: q, mode: "insensitive" } },
-            { hometown: { contains: q, mode: "insensitive" } },
-            { spotifyArtistId: { contains: q, mode: "insensitive" } },
+            { displayName: { contains: q, mode: queryMode } },
+            { bio: { contains: q, mode: queryMode } },
+            { hometown: { contains: q, mode: queryMode } },
+            { spotifyArtistId: { contains: q, mode: queryMode } },
             { genres: { has: q } },
           ],
         }
@@ -429,13 +430,14 @@ async function main() {
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const { q, take = 50, skip = 0 } = parsed.data;
+    const queryMode: Prisma.QueryMode = "insensitive";
     const where = q
       ? {
           OR: [
-            { displayName: { contains: q, mode: "insensitive" } },
-            { bio: { contains: q, mode: "insensitive" } },
-            { city: { contains: q, mode: "insensitive" } },
-            { neighborhood: { contains: q, mode: "insensitive" } },
+            { displayName: { contains: q, mode: queryMode } },
+            { bio: { contains: q, mode: queryMode } },
+            { city: { contains: q, mode: queryMode } },
+            { neighborhood: { contains: q, mode: queryMode } },
           ],
         }
       : undefined;
