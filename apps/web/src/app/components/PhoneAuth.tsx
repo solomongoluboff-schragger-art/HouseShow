@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ArrowLeft } from 'lucide-react';
@@ -19,6 +19,7 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   const e164Phone = useMemo(() => {
     const digits = phoneNumber.replace(/[^\d]/g, '');
@@ -31,13 +32,15 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
 
   useEffect(() => {
     if (step !== 'phone') return;
-    if ((auth as any)._recaptchaVerifier) return;
-    (auth as any)._recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      'recaptcha-container',
-      { size: 'normal' }
-    );
-    (auth as any)._recaptchaVerifier.render();
+    if (recaptchaRef.current) return;
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal' });
+    recaptchaRef.current = verifier;
+    verifier.render();
+
+    return () => {
+      recaptchaRef.current?.clear();
+      recaptchaRef.current = null;
+    };
   }, [step]);
 
   const handlePhoneSubmit = (e: React.FormEvent) => {
@@ -47,7 +50,7 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
       return;
     }
 
-    const verifier = (auth as any)._recaptchaVerifier as RecaptchaVerifier | undefined;
+    const verifier = recaptchaRef.current;
     if (!verifier) {
       setError('reCAPTCHA not ready. Please try again.');
       return;
@@ -145,8 +148,6 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 </div>
               </div>
 
-              <div id="recaptcha-container" className="flex justify-center" />
-
               {error && (
                 <p className="text-sm text-red-500 font-['Times',serif]">{error}</p>
               )}
@@ -204,6 +205,8 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
               </div>
             </form>
           )}
+
+          <div id="recaptcha-container" className="flex justify-center mt-6" />
         </div>
       </div>
     </div>
