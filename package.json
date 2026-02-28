@@ -15,7 +15,7 @@
     "@playwright/test": "^1.58.2"
   },
   "dependencies": {
-    "firebase": "11.30.0"
+    "firebase": "11.4.0"
   },
   "engines": {
     "node": "20.x"
