@@ -4,6 +4,7 @@ COPY apps/api/package*.json ./
 RUN npm ci
 
 FROM deps AS build
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY apps/api/tsconfig.json ./
 COPY apps/api/prisma.config.ts ./
 COPY apps/api/prisma ./prisma
