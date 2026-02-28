@@ -21,4 +21,5 @@ jobs:
       - name: Deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --config apps/api/fly.toml --app "${{ secrets.FLY_APP_NAME }}"
+          FLY_APP_NAME: ${{ secrets.FLY_APP_NAME }}
+        run: flyctl deploy --config apps/api/fly.toml --app "$FLY_APP_NAME"
