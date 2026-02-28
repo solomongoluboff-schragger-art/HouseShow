@@ -149,11 +149,13 @@ async function main() {
       "http://localhost:3000",
     ].filter(Boolean)
   );
+  const allowedOriginPatterns = [/\.vercel\.app$/];
 
   await app.register(cors, {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (allowedOrigins.has(origin)) return cb(null, true);
+      if (allowedOriginPatterns.some((pattern) => pattern.test(origin))) return cb(null, true);
       return cb(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
