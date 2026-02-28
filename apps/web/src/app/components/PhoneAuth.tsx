@@ -20,6 +20,10 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
+  const resetRecaptcha = () => {
+    recaptchaRef.current?.clear();
+    recaptchaRef.current = null;
+  };
 
   const e164Phone = useMemo(() => {
     const digits = phoneNumber.replace(/[^\d]/g, '');
@@ -38,8 +42,7 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
     verifier.render();
 
     return () => {
-      recaptchaRef.current?.clear();
-      recaptchaRef.current = null;
+      resetRecaptcha();
     };
   }, [step]);
 
@@ -63,7 +66,14 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
         setStep('verify');
       })
       .catch((err) => {
-        setError(err?.message ?? 'Failed to send verification code.');
+        const message = err?.message ?? 'Failed to send verification code.';
+        const code = err?.code ?? '';
+        if (String(message).toLowerCase().includes('timeout') || code === 'auth/timeout') {
+          resetRecaptcha();
+          setError('reCAPTCHA timed out. Please try again.');
+          return;
+        }
+        setError(message);
       })
       .finally(() => setIsSending(false));
   };
