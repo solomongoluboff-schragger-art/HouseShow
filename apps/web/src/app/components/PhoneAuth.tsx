@@ -6,7 +6,7 @@ import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } fro
 import { auth } from '../lib/firebase';
 
 interface PhoneAuthProps {
-  onComplete: (phoneNumber: string, isNewUser: boolean, idToken: string) => void;
+  onComplete: (phoneNumber: string, isNewUser: boolean, idToken: string) => Promise<void>;
   onBack: () => void;
 }
 
@@ -68,7 +68,7 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
       .finally(() => setIsSending(false));
   };
 
-  const handleVerifySubmit = (e: React.FormEvent) => {
+  const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!confirmation) {
       setError('Verification session expired. Please try again.');
@@ -77,18 +77,17 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
     }
 
     setIsVerifying(true);
-    confirmation
-      .confirm(verificationCode)
-      .then(async (credential) => {
-        const metadata = credential.user.metadata;
-        const isNewUser = metadata.creationTime === metadata.lastSignInTime;
-        const idToken = await credential.user.getIdToken();
-        onComplete(e164Phone, isNewUser, idToken);
-      })
-      .catch((err) => {
-        setError(err?.message ?? 'Invalid verification code.');
-      })
-      .finally(() => setIsVerifying(false));
+    try {
+      const credential = await confirmation.confirm(verificationCode);
+      const metadata = credential.user.metadata;
+      const isNewUser = metadata.creationTime === metadata.lastSignInTime;
+      const idToken = await credential.user.getIdToken();
+      await onComplete(e164Phone, isNewUser, idToken);
+    } catch (err: any) {
+      setError(err?.message ?? 'Invalid verification code.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
