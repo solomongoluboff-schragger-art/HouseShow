@@ -6,6 +6,7 @@ primary_region = "iad"
 
 [env]
   PORT = "3001"
+  FRONTEND_ORIGIN = "https://house-show-web.vercel.app"
 
 [http_service]
   internal_port = 3001
