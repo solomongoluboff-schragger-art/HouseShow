@@ -137,7 +137,10 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                   Phone number
                 </label>
                 <div className="flex gap-3">
-                  <select 
+                  <select
+                    id="countryCode"
+                    name="countryCode"
+                    autoComplete="tel-country-code"
                     className="bg-background border border-border text-foreground rounded-sm px-3 py-3 focus:outline-none focus:border-primary font-['Times',serif]"
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
@@ -148,7 +151,9 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                   </select>
                   <Input
                     id="phone"
+                    name="phone"
                     type="tel"
+                    autoComplete="tel-national"
                     required
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
@@ -184,7 +189,9 @@ export function PhoneAuth({ onComplete, onBack }: PhoneAuthProps) {
                 </label>
                 <Input
                   id="code"
+                  name="oneTimeCode"
                   type="text"
+                  autoComplete="one-time-code"
                   required
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}

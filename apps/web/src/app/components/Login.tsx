@@ -46,7 +46,9 @@ export function Login({ onLogin, onBack }: LoginProps) {
               </Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -61,7 +63,9 @@ export function Login({ onLogin, onBack }: LoginProps) {
               </Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
