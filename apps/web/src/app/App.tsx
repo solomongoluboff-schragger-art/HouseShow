@@ -195,14 +195,7 @@ export default function App() {
       setArtistProfile(artist);
       setUserType(resolvedType);
       setProfileCompleted(Boolean(host || artist || resolvedType === 'fan'));
-
-      if (resolvedType === 'artist') {
-        setCurrentPage('venues');
-      } else if (resolvedType === 'host') {
-        setCurrentPage('artists');
-      } else {
-        setCurrentPage('shows');
-      }
+      setCurrentPage('shows');
     } finally {
       setIsLoadingProfiles(false);
     }
