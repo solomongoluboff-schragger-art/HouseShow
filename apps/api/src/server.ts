@@ -142,24 +142,37 @@ async function getConversationForUser(conversationId: string, userId: string) {
 async function main() {
   const app = Fastify({ logger: true });
 
-  const allowedOrigins = new Set(
+      const allowedOrigins = new Set(
     [
       process.env.FRONTEND_ORIGIN,
       "http://localhost:5173",
       "http://localhost:3000",
+      "https://house-show-web.vercel.app",
     ].filter(Boolean)
   );
-  const allowedOriginPatterns = [/\.vercel\.app$/];
 
   await app.register(cors, {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
-      if (allowedOrigins.has(origin)) return cb(null, true);
-      if (allowedOriginPatterns.some((pattern) => pattern.test(origin))) return cb(null, true);
-      return cb(new Error("Not allowed by CORS"), false);
+
+      if (allowedOrigins.has(origin)) {
+        return cb(null, true);
+      }
+
+      try {
+        const hostname = new URL(origin).hostname;
+        if (hostname.endsWith(".vercel.app")) {
+          return cb(null, true);
+        }
+      } catch {
+        return cb(new Error(`Invalid origin: ${origin}`), false);
+      }
+
+      return cb(new Error(`Not allowed by CORS: ${origin}`), false);
     },
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   });
 
   await app.register(jwt, {
