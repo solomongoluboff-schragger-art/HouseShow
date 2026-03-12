@@ -13,6 +13,7 @@ import { HostProfile } from './components/HostProfile';
 import { ArtistProfile } from './components/ArtistProfile';
 import { TicketConfirmation } from './components/TicketConfirmation';
 import { EventProposal } from './components/EventProposal';
+import { ShowDetails } from './components/ShowDetails';
 import { Input } from './components/ui/input';
 import { Search, MessageCircle, User, Calendar, Music } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -49,14 +50,16 @@ import {
   rejectProposal,
   updateArtistProfile,
   updateHostProfile,
+  updateMe,
 } from './lib/api';
 
-type AuthPage = 'home' | 'login' | 'signup' | 'profileCompletion';
+type AuthPage = 'home' | 'login' | 'signup' | 'profileCompletion' | 'app';
 type UserType = 'artist' | 'host' | 'fan' | null;
 type AppPage =
   | 'venues'
   | 'artists'
   | 'shows'
+  | 'showDetails'
   | 'hostProfile'
   | 'artistProfile'
   | 'editProfile'
@@ -246,11 +249,14 @@ export default function App() {
       if (!completed && resolvedType !== 'fan') {
         setAuthPage('profileCompletion');
       } else {
-        setAuthPage('shows' as AuthPage);
+        setAuthPage('app');
         setCurrentPage('shows');
       }
 
       await Promise.all([loadConversations(token), loadEvents(token)]);
+    } catch {
+      handleLogout();
+      return;
     } finally {
       setIsLoadingProfiles(false);
     }
@@ -266,6 +272,7 @@ export default function App() {
 
   useEffect(() => {
     void loadListings();
+    void loadEvents();
   }, []);
 
   useEffect(() => {
@@ -297,6 +304,12 @@ export default function App() {
     try {
       const auth = await loginWithFirebase(idToken);
       saveAuthToken(auth.token);
+      try {
+        const me = await getMe(auth.token);
+        setCurrentUserId(me.user.id);
+      } catch {
+        // If we cannot hydrate the user yet, continue with the flow.
+      }
 
       if (isNewUser) {
         const requestedType = signupUserType ?? 'fan';
@@ -318,6 +331,8 @@ export default function App() {
   };
 
   const handleSkipProfileCompletion = () => {
+    setProfileCompleted(true);
+    setAuthPage('app');
     if (userType === 'artist') {
       setCurrentPage('venues');
     } else if (userType === 'host') {
@@ -333,7 +348,11 @@ export default function App() {
 
     try {
       if (userData.email) {
-        // Email updates are handled in the backend during auth flows when needed.
+        try {
+          await updateMe({ email: userData.email }, authToken);
+        } catch {
+          // Ignore email update errors for now.
+        }
       }
 
       if (userData.userType === 'artist') {
@@ -375,6 +394,7 @@ export default function App() {
         setArtistProfile(profile);
         setProfileCompleted(true);
         setUserType('artist');
+        setAuthPage('app');
         setCurrentPage('artistProfile');
       } else if (userData.userType === 'host') {
         const images = (userData.images ?? []).map((img: any) => img.url);
@@ -416,15 +436,18 @@ export default function App() {
         setHostProfile(profile);
         setProfileCompleted(true);
         setUserType('host');
+        setAuthPage('app');
         setCurrentPage('hostProfile');
       } else {
         setProfileCompleted(true);
+        setAuthPage('app');
         setCurrentPage('shows');
       }
     } finally {
       setIsLoadingProfiles(false);
       if (authToken) {
         await refreshPrivateData();
+        await loadListings();
       }
     }
   };
@@ -610,6 +633,11 @@ export default function App() {
     }
   };
 
+  const handleViewShowDetails = (showId: string) => {
+    setSelectedShowId(showId);
+    setCurrentPage('showDetails');
+  };
+
   const handleBuyTickets = async (showId: string) => {
     if (!authToken) {
       alert('Please sign in to buy tickets.');
@@ -634,10 +662,10 @@ export default function App() {
     setOnTourFilter(false);
   };
 
-  const allGenres = Array.from(new Set(houses.flatMap((house) => house.topGenres))).sort();
-  const allCities = Array.from(new Set(houses.map((house) => house.city))).sort();
-  const allArtistGenres = Array.from(new Set(artists.flatMap((artist) => artist.genres))).sort();
-  const allArtistCities = Array.from(new Set(artists.map((artist) => artist.hometown))).sort();
+  const allGenres = Array.from(new Set(houses.flatMap((house) => house.topGenres).filter(Boolean))).sort();
+  const allCities = Array.from(new Set(houses.map((house) => house.city).filter(Boolean))).sort();
+  const allArtistGenres = Array.from(new Set(artists.flatMap((artist) => artist.genres).filter(Boolean))).sort();
+  const allArtistCities = Array.from(new Set(artists.map((artist) => artist.hometown).filter(Boolean))).sort();
 
   const maxCapacity = houses.length > 0 ? Math.max(...houses.map((house) => house.capacity)) : 0;
 
@@ -712,6 +740,19 @@ export default function App() {
       });
   }, [events]);
 
+  const filteredShows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return showList;
+    return showList.filter((show) => {
+      return (
+        show.artistName.toLowerCase().includes(query) ||
+        show.city.toLowerCase().includes(query) ||
+        show.neighborhood.toLowerCase().includes(query) ||
+        show.description.toLowerCase().includes(query)
+      );
+    });
+  }, [showList, searchQuery]);
+
   const myEvents = useMemo(() => {
     if (!currentUserId) return [];
 
@@ -728,7 +769,7 @@ export default function App() {
     }
 
     if (authPage === 'home') {
-      return <HomePage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />;
+      return <HomePage onGetStarted={handleGetStarted} onSignIn={handleSignIn} shows={showList} />;
     }
 
     if (authPage === 'login') {
@@ -750,10 +791,10 @@ export default function App() {
       );
     }
 
-    if (authPage === 'profileCompletion' && signupUserType) {
+    if (authPage === 'profileCompletion' && signupUserType && signupUserType !== 'fan') {
       return (
         <ProfileCompletion
-          userType={signupUserType as 'artist' | 'host' | 'fan'}
+          userType={signupUserType as 'artist' | 'host'}
           onComplete={handleProfileComplete}
           onSkip={handleSkipProfileCompletion}
         />
@@ -969,6 +1010,30 @@ export default function App() {
     );
   }
 
+  if (currentPage === 'showDetails') {
+    if (!selectedShowId) {
+      return (
+        <div className="min-h-screen bg-background p-8 text-muted-foreground">
+          Show not selected.
+          <Button variant="ghost" onClick={() => setCurrentPage('shows')} className="mt-4">
+            ← back to shows
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
+        <ShowDetails
+          eventId={selectedShowId}
+          token={authToken ?? undefined}
+          onBack={() => setCurrentPage('shows')}
+          onBuyTickets={handleBuyTickets}
+        />
+      </div>
+    );
+  }
+
   if (currentPage === 'ticketConfirmation') {
     if (!selectedShowId || !authToken) {
       return (
@@ -1004,6 +1069,9 @@ export default function App() {
       <EventDashboard
         userType={userType}
         events={myEvents}
+        authToken={authToken ?? ''}
+        currentUserId={currentUserId}
+        onRefresh={refreshPrivateData}
         onBack={() => setCurrentPage('shows')}
       />
     );
@@ -1041,39 +1109,51 @@ export default function App() {
                 </Button>
               )}
 
+              {userType !== 'fan' && (
+                <>
+                  <Button
+                    onClick={() => setCurrentPage('eventDashboard')}
+                    variant="ghost"
+                    className="font-['Teko',sans-serif] text-lg text-foreground hover:bg-secondary border border-border rounded-sm"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    My Events
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentPage('messages')}
+                    className="relative text-foreground hover:bg-secondary border border-border rounded-sm"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      if (userType === 'artist') {
+                        handleOpenOwnArtistProfile();
+                      } else if (userType === 'host') {
+                        handleOpenOwnHostProfile();
+                      }
+                    }}
+                    className="relative text-foreground hover:bg-secondary border border-border rounded-sm"
+                  >
+                    <User className="w-5 h-5" />
+                    {!profileCompleted && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+                  </Button>
+                </>
+              )}
+
               <Button
-                onClick={() => setCurrentPage('eventDashboard')}
+                onClick={handleLogout}
                 variant="ghost"
                 className="font-['Teko',sans-serif] text-lg text-foreground hover:bg-secondary border border-border rounded-sm"
               >
-                <Calendar className="w-4 h-4 mr-2" />
-                My Events
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentPage('messages')}
-                className="relative text-foreground hover:bg-secondary border border-border rounded-sm"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (userType === 'artist') {
-                    handleOpenOwnArtistProfile();
-                  } else if (userType === 'host') {
-                    handleOpenOwnHostProfile();
-                  }
-                }}
-                className="relative text-foreground hover:bg-secondary border border-border rounded-sm"
-              >
-                <User className="w-5 h-5" />
-                {!profileCompleted && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+                Sign out
               </Button>
             </div>
           </div>
@@ -1082,7 +1162,7 @@ export default function App() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by neighborhood or university..."
+              placeholder="Search by artist, neighborhood, or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 pr-4 py-3 w-full bg-input-background"
@@ -1334,7 +1414,11 @@ export default function App() {
             )}
           </>
         ) : (
-          <ShowsPage shows={showList} onBuyTickets={handleBuyTickets} />
+          <ShowsPage
+            shows={filteredShows}
+            onBuyTickets={handleBuyTickets}
+            onViewDetails={handleViewShowDetails}
+          />
         )}
       </div>
     </div>

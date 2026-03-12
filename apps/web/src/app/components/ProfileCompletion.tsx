@@ -3,12 +3,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Upload, X, CheckCircle, Music, Instagram, Globe } from 'lucide-react';
-import { Badge } from './ui/badge';
+import { Upload, X, Music, Instagram, Globe } from 'lucide-react';
 import { CITY_OPTIONS, neighborhoodsForCity } from '../data/locations';
 
 interface ProfileCompletionProps {
-  userType: 'artist' | 'host' | 'fan';
+  userType: 'artist' | 'host';
   onComplete: (userData: any) => void;
   onSkip: () => void;
 }
@@ -21,9 +20,7 @@ interface UploadedImage {
 
 export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompletionProps) {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
-  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -42,11 +39,6 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
     city: '',
     capacity: '',
     venueDescription: '',
-    // Fan specific
-    favoriteGenres: '',
-    favoriteArtists: '',
-    userCity: '',
-    university: '',
   });
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,13 +56,6 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
         };
         reader.readAsDataURL(file);
       });
-    }
-  };
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
     }
   };
 
@@ -94,18 +79,9 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
     }
   };
 
-  const handleVideoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    setIsDraggingVideo(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setVideoFile(file);
-    }
-  };
-
   const neighborhoodOptions = useMemo(
-    () => neighborhoodsForCity(formData.city || formData.userCity || formData.hometown),
-    [formData.city, formData.userCity, formData.hometown]
+    () => neighborhoodsForCity(formData.city || formData.hometown),
+    [formData.city, formData.hometown]
   );
 
   const removeImage = (id: string) => {
@@ -120,27 +96,15 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onComplete({ ...formData, userType, images: uploadedImages, video: videoFile });
+    onComplete({ ...formData, userType, images: uploadedImages });
   };
 
   const getUserTypeTitle = () => {
     switch (userType) {
       case 'artist': return 'Artist';
       case 'host': return 'Host';
-      case 'fan': return 'Fan';
+      default: return 'Artist';
     }
-  };
-
-  const getVideoLabel = () => {
-    if (userType === 'artist') return 'Performance Video';
-    if (userType === 'host') return 'Walking Tour Video';
-    return 'Video';
-  };
-
-  const getVideoDescription = () => {
-    if (userType === 'artist') return 'Upload a video of your live performance';
-    if (userType === 'host') return 'Upload a walking tour of your venue space';
-    return '';
   };
 
   return (
@@ -171,7 +135,6 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
           <p className="text-muted-foreground font-['Times',serif] text-lg">
             {userType === 'artist' && 'Let hosts know what makes your music special'}
             {userType === 'host' && 'Show artists what makes your venue unique'}
-            {userType === 'fan' && 'Help us recommend the perfect shows for you'}
           </p>
         </div>
 
@@ -189,7 +152,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                placeholder="John Doe"
+                placeholder="Full name"
               />
             </div>
 
@@ -207,7 +170,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.bandName}
                     onChange={(e) => setFormData({ ...formData, bandName: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="The Violet Echoes"
+                    placeholder="Band or artist name"
                   />
                 </div>
 
@@ -240,7 +203,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.genres}
                     onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Indie Rock, Dream Pop, Alternative"
+                    placeholder="Add genres"
                   />
                 </div>
 
@@ -254,7 +217,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary resize-none font-['Times',serif]"
-                    placeholder="Tell us about your music..."
+                    placeholder="Share your sound and story."
                     rows={4}
                   />
                 </div>
@@ -323,62 +286,6 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                       onChange={handleImageUpload}
                     />
                   </label>
-                </div>
-
-                {/* Video */}
-                <div>
-                  <Label className="text-foreground mb-2 font-['Times',serif]">
-                    {getVideoLabel()} <span className="text-primary">*</span>
-                  </Label>
-                  <p className="text-sm text-muted-foreground mb-3 font-['Times',serif]">
-                    {getVideoDescription()}
-                  </p>
-                  
-                  {videoFile ? (
-                    <div className="flex items-center gap-3 p-4 bg-background rounded-sm border border-border">
-                      <CheckCircle className="w-5 h-5 text-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground font-['Times',serif]">{videoFile.name}</p>
-                        <p className="text-xs text-muted-foreground font-['Times',serif]">
-                          {(videoFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setVideoFile(null)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <label
-                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-sm cursor-pointer transition-colors ${
-                        isDraggingVideo ? 'border-primary bg-primary/10' : 'border-border bg-background hover:bg-card'
-                      }`}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDraggingVideo(true);
-                      }}
-                      onDragLeave={() => setIsDraggingVideo(false)}
-                      onDrop={handleVideoDrop}
-                    >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground font-['Times',serif]">
-                          Click to upload video or drag & drop
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="video/*"
-                        required
-                        onChange={handleVideoUpload}
-                      />
-                    </label>
-                  )}
                 </div>
 
                 {/* Social Links */}
@@ -468,7 +375,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.venueName}
                     onChange={(e) => setFormData({ ...formData, venueName: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Williamsburg Loft"
+                    placeholder="Venue name"
                   />
                 </div>
 
@@ -521,7 +428,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="50"
+                    placeholder="Approx. capacity"
                   />
                 </div>
 
@@ -535,7 +442,7 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                     value={formData.venueDescription}
                     onChange={(e) => setFormData({ ...formData, venueDescription: e.target.value })}
                     className="bg-background border-border text-foreground rounded-sm focus:border-primary resize-none font-['Times',serif]"
-                    placeholder="We’ve got a cozy living room that fits ~40 people, a sturdy coffee table for merch, and neighbors who love indie folk (as long as we’re done by 10). BYOB, street parking, and a very friendly cat."
+                    placeholder="Describe your space, setup, and any house rules."
                     rows={4}
                   />
                 </div>
@@ -596,134 +503,6 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
                   </label>
                 </div>
 
-                {/* Video */}
-                <div>
-                  <Label className="text-foreground mb-2 font-['Times',serif]">
-                    {getVideoLabel()} <span className="text-primary">*</span>
-                  </Label>
-                  <p className="text-sm text-muted-foreground mb-3 font-['Times',serif]">
-                    {getVideoDescription()}
-                  </p>
-                  
-                  {videoFile ? (
-                    <div className="flex items-center gap-3 p-4 bg-background rounded-sm border border-border">
-                      <CheckCircle className="w-5 h-5 text-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground font-['Times',serif]">{videoFile.name}</p>
-                        <p className="text-xs text-muted-foreground font-['Times',serif]">
-                          {(videoFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setVideoFile(null)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-sm cursor-pointer bg-background hover:bg-card transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground font-['Times',serif]">
-                          Click to upload video
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="video/*"
-                        required
-                        onChange={handleVideoUpload}
-                      />
-                    </label>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Fan Specific Fields */}
-            {userType === 'fan' && (
-              <>
-                <div>
-                  <Label htmlFor="favoriteGenres" className="text-foreground mb-2 font-['Times',serif]">
-                    Favorite Genres (comma separated) <span className="text-primary">*</span>
-                  </Label>
-                  <Input
-                    id="favoriteGenres"
-                    type="text"
-                    required
-                    value={formData.favoriteGenres}
-                    onChange={(e) => setFormData({ ...formData, favoriteGenres: e.target.value })}
-                    className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Indie Rock, Jazz, Electronic"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="favoriteArtists" className="text-foreground mb-2 font-['Times',serif]">
-                    Favorite Artists (comma separated)
-                  </Label>
-                  <Input
-                    id="favoriteArtists"
-                    type="text"
-                    value={formData.favoriteArtists}
-                    onChange={(e) => setFormData({ ...formData, favoriteArtists: e.target.value })}
-                    className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="Radiohead, Tame Impala, The National"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="userCity" className="text-foreground mb-2 font-['Times',serif]">
-                    City <span className="text-primary">*</span>
-                  </Label>
-                  <select
-                    id="userCity"
-                    required
-                    value={formData.userCity}
-                    onChange={(e) => setFormData({ ...formData, userCity: e.target.value })}
-                    className="w-full bg-background border border-border rounded-sm px-3 py-2 font-['Times',serif]"
-                  >
-                    <option value="">Select a city</option>
-                    {CITY_OPTIONS.map((city) => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="university" className="text-foreground mb-2 font-['Times',serif]">
-                    University (Optional)
-                  </Label>
-                  <Input
-                    id="university"
-                    type="text"
-                    value={formData.university}
-                    onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-                    className="bg-background border-border text-foreground rounded-sm focus:border-primary font-['Times',serif]"
-                    placeholder="NYU"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-foreground mb-2 font-['Times',serif]">
-                    Connect Spotify Account (Optional)
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2 border-border text-foreground hover:bg-card"
-                  >
-                    <Music className="w-4 h-4" />
-                    Connect Spotify
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2 font-['Times',serif]">
-                    We'll import your favorite artists and genres
-                  </p>
-                </div>
               </>
             )}
 

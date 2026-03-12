@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { EventWithDetails } from '../lib/api';
+import { Input } from './ui/input';
+import { EventWithDetails, updateEventAddress } from '../lib/api';
 import {
   Calendar,
   Users,
@@ -16,6 +17,9 @@ import {
 interface EventDashboardProps {
   userType: 'artist' | 'host';
   events: EventWithDetails[];
+  authToken: string;
+  currentUserId: string | null;
+  onRefresh?: () => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -42,7 +46,7 @@ function formatMoney(value: number) {
   return `$${value.toFixed(2)}`;
 }
 
-export function EventDashboard({ userType, events, onBack }: EventDashboardProps) {
+export function EventDashboard({ userType, events, authToken, currentUserId, onRefresh, onBack }: EventDashboardProps) {
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
       const aDate = new Date(a.proposal?.date ?? a.publishedAt).getTime();
@@ -70,6 +74,15 @@ export function EventDashboard({ userType, events, onBack }: EventDashboardProps
     if (!selectedEventId) return null;
     return sortedEvents.find((event) => event.id === selectedEventId) ?? null;
   }, [selectedEventId, sortedEvents]);
+
+  const [addressDraft, setAddressDraft] = useState('');
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAddressDraft(selectedEvent?.address ?? '');
+    setAddressError(null);
+  }, [selectedEvent?.id, selectedEvent?.address]);
 
   if (sortedEvents.length === 0) {
     return (
@@ -129,6 +142,31 @@ export function EventDashboard({ userType, events, onBack }: EventDashboardProps
   const earnings = userType === 'artist' ? revenue * 0.75 : revenue * 0.15;
   const soldPercentage = capacity > 0 ? (ticketsSold / capacity) * 100 : 0;
   const ticketingEnabled = selectedEvent.ticketingEnabled;
+  const canEditAddress =
+    userType === 'host' &&
+    Boolean(currentUserId) &&
+    selectedEvent.hostProfile?.userId === currentUserId;
+
+  const handleSaveAddress = async () => {
+    if (!canEditAddress || !authToken) return;
+    if (!addressDraft.trim()) {
+      setAddressError('Please enter an address before saving.');
+      return;
+    }
+
+    setAddressSaving(true);
+    setAddressError(null);
+    try {
+      await updateEventAddress(selectedEvent.id, addressDraft.trim(), authToken);
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (err) {
+      setAddressError(err instanceof Error ? err.message : 'Could not update address.');
+    } finally {
+      setAddressSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
@@ -210,6 +248,47 @@ export function EventDashboard({ userType, events, onBack }: EventDashboardProps
               </div>
             </div>
           </div>
+        </Card>
+
+        <Card className="p-6 border-border shadow-xl mb-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-foreground mb-1">Event Address</h3>
+              <p className="text-sm text-muted-foreground">
+                {canEditAddress
+                  ? 'Set the address that ticket holders will see.'
+                  : 'The host will share the address after confirmation.'}
+              </p>
+            </div>
+            <Badge className="bg-secondary text-secondary-foreground">
+              {selectedEvent.address ? 'shared' : 'not shared'}
+            </Badge>
+          </div>
+
+          {canEditAddress ? (
+            <div className="mt-4 space-y-3">
+              <Input
+                value={addressDraft}
+                onChange={(e) => setAddressDraft(e.target.value)}
+                placeholder="Enter the event address"
+                className="bg-input-background border-border"
+              />
+              {addressError ? (
+                <p className="text-sm text-destructive">{addressError}</p>
+              ) : null}
+              <Button
+                onClick={handleSaveAddress}
+                disabled={addressSaving}
+                className="bg-primary text-primary-foreground"
+              >
+                {addressSaving ? 'Saving...' : 'Save Address'}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-4">
+              {selectedEvent.address || 'Address will appear here once added.'}
+            </p>
+          )}
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

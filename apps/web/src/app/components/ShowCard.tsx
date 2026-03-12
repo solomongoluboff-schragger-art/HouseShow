@@ -24,9 +24,10 @@ export interface Show {
 interface ShowCardProps {
   show: Show;
   onBuyTickets?: (showId: string) => void;
+  onViewDetails?: (showId: string) => void;
 }
 
-export function ShowCard({ show, onBuyTickets }: ShowCardProps) {
+export function ShowCard({ show, onBuyTickets, onViewDetails }: ShowCardProps) {
   const ticketsRemaining = show.capacity - show.ticketsSold;
   const isLowTickets = ticketsRemaining <= 5 && ticketsRemaining > 0;
   const isSoldOut = show.soldOut || ticketsRemaining === 0;
@@ -154,20 +155,31 @@ export function ShowCard({ show, onBuyTickets }: ShowCardProps) {
         </div>
 
         {/* Buy Tickets Button */}
-        <Button 
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-          disabled={isSoldOut}
-          onClick={() => {
-            if (isSoldOut || !onBuyTickets || show.ticketingEnabled === false) return;
-            onBuyTickets(show.id);
-          }}
-        >
-          {show.ticketingEnabled === false
-            ? 'ticketing not available'
-            : isSoldOut
-              ? 'sold out'
-              : 'buy tickets'}
-        </Button>
+        <div className="flex gap-2">
+          {onViewDetails && (
+            <Button
+              variant="outline"
+              className="flex-1 border-border"
+              onClick={() => onViewDetails(show.id)}
+            >
+              view details
+            </Button>
+          )}
+          <Button 
+            className={`${onViewDetails ? 'flex-1' : 'w-full'} bg-primary hover:bg-primary/90 text-primary-foreground font-semibold`}
+            disabled={isSoldOut}
+            onClick={() => {
+              if (isSoldOut || !onBuyTickets || show.ticketingEnabled === false) return;
+              onBuyTickets(show.id);
+            }}
+          >
+            {show.ticketingEnabled === false
+              ? 'ticketing not available'
+              : isSoldOut
+                ? 'sold out'
+                : 'buy tickets'}
+          </Button>
+        </div>
       </div>
     </Card>
   );

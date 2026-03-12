@@ -1,22 +1,27 @@
 import imgTourYourWay from '@/assets/289df7460966406a7c2cb3a55422f0e3dbf872ad.png';
 import imgPerformers from '@/assets/57a2de3dbb38db4d15b015c0f98d272bf82f919f.png';
 import imgEverySceneTitle from '@/assets/b013c654bc56ba9e11fa39e36577471953e509d7.png';
-import imgFolkShow from '@/assets/3bc6e61b4a5cf074b7c1d1a7823d3f58b95e62dc.png';
-import imgHardcoreBasement from '@/assets/bf2564e8dd07054dfc9581d6cdc8091f2544dce2.png';
-import imgJazzBackyard from '@/assets/f357d8f54b93a92f6db09fed4ce11e9b02aacbdd.png';
-import imgIndiePopRoof from '@/assets/c5b8abb3237213419746cb755fb337d9eb249ff9.png';
 import imgIntimateCrowd from '@/assets/98447d2450b071b127f39ee0314848b139c1ab05.png';
 import imgHeroCrowd from '@/assets/bc0c6734fcb5aed959ff61810829b5d7a3e805f8.png';
 import imgSubtitle from '@/assets/8e3f16a219bba6e81bf36568590bbe904944ff8a.png';
 import imgHouseVenue from '@/assets/d707ffd23cb4017c2d7153b28c38a71b288cb5e2.png';
 import imgBringMusic from '@/assets/c7d772d44d1d02bc81deb707d8dd417083993fbc.png';
+import type { Show } from './ShowCard';
 
 interface HomePageProps {
   onGetStarted: (userType: 'artist' | 'host' | 'fan') => void;
   onSignIn: () => void;
+  shows?: Show[];
 }
 
-export function HomePage({ onGetStarted, onSignIn }: HomePageProps) {
+function formatHomeDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Date TBA';
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function HomePage({ onGetStarted, onSignIn, shows = [] }: HomePageProps) {
+  const featuredShows = shows.slice(0, 4);
   return (
     <div className="relative w-[1143px] mx-auto bg-[#faf7f2]" style={{ minHeight: '2854px' }}>
       {/* Hero Section */}
@@ -157,93 +162,40 @@ export function HomePage({ onGetStarted, onSignIn }: HomePageProps) {
 
         {/* Event Cards Grid */}
         <div className="gap-x-[24px] gap-y-[24px] grid grid-cols-[repeat(4,minmax(0,1fr))] grid-rows-[repeat(1,minmax(0,1fr))] h-[256px] relative shrink-0 w-full">
-          {/* Folk Card */}
-          <div 
-            onClick={() => onGetStarted('fan')}
-            className="bg-[#faf7f2] col-1 justify-self-stretch overflow-clip relative rounded-[16px] row-1 self-stretch shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-[0px_14px_20px_-3px_rgba(0,0,0,0.15),0px_8px_10px_-4px_rgba(0,0,0,0.15)]">
-            <div className="absolute h-[256px] left-0 top-0 w-[251.75px]">
-              <img 
-                src={imgFolkShow}
-                alt="Folk show in a living room"
-                className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
-              />
+          {featuredShows.length === 0 ? (
+            <div className="col-span-4 flex items-center justify-center h-[256px] rounded-[16px] border border-dashed border-[#d4cfca] text-[#6b6d75] font-['Times New Roman',serif] text-lg">
+              No upcoming shows yet. Be the first to host or perform.
             </div>
-            <div className="absolute bg-gradient-to-t from-[rgba(28,30,38,0.6)] h-[256px] left-0 to-[rgba(0,0,0,0)] top-0 w-[251.75px]" />
-            <div className="absolute content-stretch flex flex-col h-[48px] items-start left-[16px] top-[192px] w-[219.75px]">
-              <div className="h-[28px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] font-bold leading-[28px] left-0 not-italic text-[18px] text-white top-[-0.5px]">Folk in a Living Room</p>
+          ) : (
+            featuredShows.map((show) => (
+              <div
+                key={show.id}
+                onClick={() => onGetStarted('fan')}
+                className="bg-[#faf7f2] justify-self-stretch overflow-clip relative rounded-[16px] row-1 self-stretch shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-[0px_14px_20px_-3px_rgba(0,0,0,0.15),0px_8px_10px_-4px_rgba(0,0,0,0.15)]"
+              >
+                <div className="absolute h-[256px] left-0 top-0 w-[251.75px]">
+                  <img
+                    src={show.image}
+                    alt={show.artistName}
+                    className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
+                  />
+                </div>
+                <div className="absolute bg-gradient-to-t from-[rgba(28,30,38,0.6)] h-[256px] left-0 to-[rgba(0,0,0,0)] top-0 w-[251.75px]" />
+                <div className="absolute content-stretch flex flex-col h-[48px] items-start left-[16px] top-[192px] w-[219.75px]">
+                  <div className="h-[28px] relative shrink-0 w-full">
+                    <p className="absolute font-['Times New Roman',serif] font-bold leading-[28px] left-0 not-italic text-[18px] text-white top-[-0.5px]">
+                      {show.artistName || 'Upcoming show'}
+                    </p>
+                  </div>
+                  <div className="h-[20px] relative shrink-0 w-full">
+                    <p className="absolute font-['Times New Roman',serif] leading-[20px] left-0 not-italic text-[14px] text-[rgba(255,255,255,0.8)] top-0">
+                      {(show.city || 'Location TBA')} • {formatHomeDate(show.date)}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="h-[20px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] leading-[20px] left-0 not-italic text-[14px] text-[rgba(255,255,255,0.8)] top-0">Brooklyn • Tonight</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Hardcore Card */}
-          <div 
-            onClick={() => onGetStarted('fan')}
-            className="bg-[#faf7f2] col-2 justify-self-stretch overflow-clip relative rounded-[16px] row-1 self-stretch shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-[0px_14px_20px_-3px_rgba(0,0,0,0.15),0px_8px_10px_-4px_rgba(0,0,0,0.15)]">
-            <div className="absolute h-[256px] left-0 top-0 w-[251.75px]">
-              <img 
-                src={imgHardcoreBasement}
-                alt="Hardcore basement set"
-                className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
-              />
-            </div>
-            <div className="absolute bg-gradient-to-t from-[rgba(28,30,38,0.6)] h-[256px] left-0 to-[rgba(0,0,0,0)] top-0 w-[251.75px]" />
-            <div className="absolute content-stretch flex flex-col h-[48px] items-start left-[16px] top-[192px] w-[219.75px]">
-              <div className="h-[28px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] font-bold leading-[28px] left-0 not-italic text-[18px] text-white top-[-0.5px]">Hardcore Basement Set</p>
-              </div>
-              <div className="h-[20px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] leading-[20px] left-0 not-italic text-[14px] text-[rgba(255,255,255,0.8)] top-0">Portland • Friday</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Jazz Card */}
-          <div 
-            onClick={() => onGetStarted('fan')}
-            className="bg-[#faf7f2] col-3 justify-self-stretch overflow-clip relative rounded-[16px] row-1 self-stretch shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-[0px_14px_20px_-3px_rgba(0,0,0,0.15),0px_8px_10px_-4px_rgba(0,0,0,0.15)]">
-            <div className="absolute h-[256px] left-0 top-0 w-[251.75px]">
-              <img 
-                src={imgJazzBackyard}
-                alt="Jazz in a backyard"
-                className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
-              />
-            </div>
-            <div className="absolute bg-gradient-to-t from-[rgba(28,30,38,0.6)] h-[256px] left-0 to-[rgba(0,0,0,0)] top-0 w-[251.75px]" />
-            <div className="absolute content-stretch flex flex-col h-[48px] items-start left-[16px] top-[192px] w-[219.75px]">
-              <div className="h-[28px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] font-bold leading-[28px] left-0 not-italic text-[18px] text-white top-[-0.5px]">Jazz in a Backyard</p>
-              </div>
-              <div className="h-[20px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] leading-[20px] left-0 not-italic text-[14px] text-[rgba(255,255,255,0.8)] top-0">Austin • Saturday</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Indie Pop Card */}
-          <div 
-            onClick={() => onGetStarted('fan')}
-            className="bg-[#faf7f2] col-4 justify-self-stretch overflow-clip relative rounded-[16px] row-1 self-stretch shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-[0px_14px_20px_-3px_rgba(0,0,0,0.15),0px_8px_10px_-4px_rgba(0,0,0,0.15)]">
-            <div className="absolute h-[256px] left-0 top-0 w-[251.75px]">
-              <img 
-                src={imgIndiePopRoof}
-                alt="Indie pop on a roof"
-                className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
-              />
-            </div>
-            <div className="absolute bg-gradient-to-t from-[rgba(28,30,38,0.6)] h-[256px] left-0 to-[rgba(0,0,0,0)] top-0 w-[251.75px]" />
-            <div className="absolute content-stretch flex flex-col h-[48px] items-start left-[16px] top-[192px] w-[219.75px]">
-              <div className="h-[28px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] font-bold leading-[28px] left-0 not-italic text-[18px] text-white top-[-0.5px]">Indie Pop on a Roof</p>
-              </div>
-              <div className="h-[20px] relative shrink-0 w-full">
-                <p className="absolute font-['Times New Roman',serif] leading-[20px] left-0 not-italic text-[14px] text-[rgba(255,255,255,0.8)] top-0">LA • Next Week</p>
-              </div>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </div>
 

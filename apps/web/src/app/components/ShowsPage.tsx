@@ -3,9 +3,10 @@ import { Show } from './ShowCard';
 interface ShowsPageProps {
   shows?: Show[];
   onBuyTickets?: (showId: string) => void;
+  onViewDetails?: (showId: string) => void;
 }
 
-export function ShowsPage({ onBuyTickets, shows = [] }: ShowsPageProps) {
+export function ShowsPage({ onBuyTickets, onViewDetails, shows = [] }: ShowsPageProps) {
   return (
     <div>
       <div className="mb-6">
@@ -25,6 +26,7 @@ export function ShowsPage({ onBuyTickets, shows = [] }: ShowsPageProps) {
               key={show.id}
               show={show}
               onBuyTickets={onBuyTickets}
+              onViewDetails={onViewDetails}
             />
           ))}
         </div>

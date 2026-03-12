@@ -4,8 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Textarea } from './ui/textarea';
-import { Upload, X, Music, Instagram, Globe, CheckCircle } from 'lucide-react';
-import { Badge } from './ui/badge';
+import { Upload, X, Music, Instagram, Globe } from 'lucide-react';
 import { CITY_OPTIONS, neighborhoodsForCity } from '../data/locations';
 
 interface AccountCreationProps {
@@ -31,9 +30,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
     }
     return images;
   });
-  const [videoFile, setVideoFile] = useState<File | null>(initialData?.video ?? null);
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
-  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   
   const [formData, setFormData] = useState({
     email: initialData?.email ?? '',
@@ -59,16 +56,11 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
     sleepDetails: initialData?.sleepDetails ?? '',
     topGenres: initialData?.topGenres ?? '',
     amenities: initialData?.amenities ?? '',
-    // Fan specific
-    favoriteGenres: initialData?.favoriteGenres ?? '',
-    favoriteArtists: initialData?.favoriteArtists ?? '',
-    userCity: initialData?.userCity ?? '',
-    university: initialData?.university ?? '',
   });
 
   const neighborhoodOptions = useMemo(
-    () => neighborhoodsForCity(formData.city || formData.userCity || formData.hometown),
-    [formData.city, formData.userCity, formData.hometown]
+    () => neighborhoodsForCity(formData.city || formData.hometown),
+    [formData.city, formData.hometown]
   );
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,13 +78,6 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
         };
         reader.readAsDataURL(file);
       });
-    }
-  };
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
     }
   };
 
@@ -116,15 +101,6 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
     }
   };
 
-  const handleVideoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    setIsDraggingVideo(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setVideoFile(file);
-    }
-  };
-
   const removeImage = (id: string) => {
     setUploadedImages((prev) => prev.filter((img) => img.id !== id));
   };
@@ -138,17 +114,12 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (userType === 'fan' && step === 1) {
-      setStep(2);
-      return;
-    }
-    
     if ((userType === 'artist' || userType === 'host') && step === 1) {
       setStep(2);
       return;
     }
     
-    onComplete({ ...formData, userType, images: uploadedImages, video: videoFile });
+    onComplete({ ...formData, userType, images: uploadedImages });
   };
 
   const getUserTypeTitle = () => {
@@ -157,18 +128,6 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
       case 'host': return 'Host';
       case 'fan': return 'Music Lover';
     }
-  };
-
-  const getVideoLabel = () => {
-    if (userType === 'artist') return 'Performance Video';
-    if (userType === 'host') return 'Walking Tour Video';
-    return 'Video';
-  };
-
-  const getVideoDescription = () => {
-    if (userType === 'artist') return 'Upload a video of your live performance';
-    if (userType === 'host') return 'Upload a walking tour of your venue space';
-    return '';
   };
 
   return (
@@ -187,11 +146,13 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
             {mode === 'edit' ? `Edit Your ${getUserTypeTitle()} Profile` : `Create Your ${getUserTypeTitle()} Account`}
           </h1>
           <p className="text-muted-foreground">
-            {step === 1 ? 'Basic Information' : userType === 'fan' ? 'Your Music Preferences' : 'Media & Links'}
+            {step === 1 ? 'Basic Information' : 'Media & Links'}
           </p>
           <div className="flex justify-center gap-2 mt-4">
             <div className={`w-3 h-3 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-            <div className={`w-3 h-3 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+            {userType !== 'fan' && (
+              <div className={`w-3 h-3 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+            )}
           </div>
         </div>
 
@@ -200,20 +161,22 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
             {step === 1 && (
               <>
                 {/* Common Fields */}
-                <div>
-                  <Label htmlFor="name" className="text-foreground mb-2">
-                    Your Name
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="John Doe"
-                  />
-                </div>
+                {userType !== 'fan' && (
+                  <div>
+                    <Label htmlFor="name" className="text-foreground mb-2">
+                      Your Name
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="bg-input-background border-border"
+                      placeholder="Full name"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="email" className="text-foreground mb-2">
@@ -247,7 +210,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.bandName}
                         onChange={(e) => setFormData({ ...formData, bandName: e.target.value })}
                         className="bg-input-background border-border"
-                        placeholder="The Violet Echoes"
+                        placeholder="Band or artist name"
                       />
                     </div>
 
@@ -280,7 +243,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.genres}
                         onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
                         className="bg-input-background border-border"
-                        placeholder="Indie Rock, Dream Pop, Alternative"
+                        placeholder="Add genres"
                       />
                     </div>
 
@@ -294,7 +257,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.bio}
                         onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                         className="bg-input-background border-border resize-none"
-                        placeholder="Tell us about your music..."
+                        placeholder="Share your sound and story."
                         rows={4}
                       />
                     </div>
@@ -315,7 +278,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.venueName}
                         onChange={(e) => setFormData({ ...formData, venueName: e.target.value })}
                         className="bg-input-background border-border"
-                        placeholder="Williamsburg Loft"
+                        placeholder="Venue name"
                       />
                     </div>
 
@@ -368,7 +331,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.capacity}
                         onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                         className="bg-input-background border-border"
-                        placeholder="50"
+                        placeholder="Approx. capacity"
                       />
                     </div>
 
@@ -382,7 +345,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                         value={formData.venueDescription}
                         onChange={(e) => setFormData({ ...formData, venueDescription: e.target.value })}
                         className="bg-input-background border-border resize-none"
-                        placeholder="We’ve got a cozy living room that fits ~40 people, a sturdy coffee table for merch, and neighbors who love indie folk (as long as we’re done by 10). BYOB, street parking, and a very friendly cat."
+                        placeholder="Describe your space, setup, and any house rules."
                         rows={4}
                       />
                     </div>
@@ -460,62 +423,6 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                   </label>
                 </div>
 
-                {/* Video Upload */}
-                <div>
-                  <Label className="text-foreground mb-2">
-                    {getVideoLabel()} <span className="text-primary">*</span>
-                  </Label>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {getVideoDescription()}
-                  </p>
-                  
-                  {videoFile ? (
-                    <div className="flex items-center gap-3 p-4 bg-secondary/20 rounded-lg border border-border">
-                      <CheckCircle className="w-5 h-5 text-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground">{videoFile.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(videoFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setVideoFile(null)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <label
-                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                        isDraggingVideo ? 'border-primary bg-primary/10' : 'border-border bg-secondary/20 hover:bg-secondary/40'
-                      }`}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDraggingVideo(true);
-                      }}
-                      onDragLeave={() => setIsDraggingVideo(false)}
-                      onDrop={handleVideoDrop}
-                    >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload video or drag & drop
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="video/*"
-                        required
-                        onChange={handleVideoUpload}
-                      />
-                    </label>
-                  )}
-                </div>
-
                 {/* Social Media & Streaming Links - Artists Only */}
                 {userType === 'artist' && (
                   <>
@@ -591,95 +498,17 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
               </>
             )}
 
-            {/* Step 2: Preferences for Music Lovers */}
-            {step === 2 && userType === 'fan' && (
-              <>
-                <div>
-                  <Label htmlFor="favoriteGenres" className="text-foreground mb-2">
-                    Favorite Genres (comma separated)
-                  </Label>
-                  <Input
-                    id="favoriteGenres"
-                    type="text"
-                    required
-                    value={formData.favoriteGenres}
-                    onChange={(e) => setFormData({ ...formData, favoriteGenres: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="Indie Rock, Jazz, Electronic"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="favoriteArtists" className="text-foreground mb-2">
-                    Favorite Artists (comma separated)
-                  </Label>
-                  <Input
-                    id="favoriteArtists"
-                    type="text"
-                    required
-                    value={formData.favoriteArtists}
-                    onChange={(e) => setFormData({ ...formData, favoriteArtists: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="Radiohead, Tame Impala, The National"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-foreground mb-2">
-                    Connect Spotify Account (Optional)
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2 border-border"
-                  >
-                    <Music className="w-4 h-4" />
-                    Connect Spotify
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    We'll import your favorite artists and genres
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="userCity" className="text-foreground mb-2">
-                    City
-                  </Label>
-                  <select
-                    id="userCity"
-                    required
-                    value={formData.userCity}
-                    onChange={(e) => setFormData({ ...formData, userCity: e.target.value })}
-                    className="w-full bg-input-background border border-border rounded-md px-3 py-2"
-                  >
-                    <option value="">Select a city</option>
-                    {CITY_OPTIONS.map((city) => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="university" className="text-foreground mb-2">
-                    University (Optional)
-                  </Label>
-                  <Input
-                    id="university"
-                    type="text"
-                    value={formData.university}
-                    onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-                    className="bg-input-background border-border"
-                    placeholder="NYU"
-                  />
-                </div>
-              </>
-            )}
-
             <Button 
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6"
             >
-              {mode === 'edit' ? 'Save Changes' : step === 1 ? 'Continue' : 'Create Account'}
+              {mode === 'edit'
+                ? 'Save Changes'
+                : userType === 'fan'
+                  ? 'Create Account'
+                  : step === 1
+                    ? 'Continue'
+                    : 'Create Account'}
             </Button>
           </form>
         </Card>
