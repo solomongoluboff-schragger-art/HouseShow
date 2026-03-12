@@ -395,6 +395,8 @@ export default function App() {
         }
 
         setArtistProfile(profile);
+        setSelectedArtistProfileId(profile.id);
+        setActiveArtistProfile(profile);
         setProfileCompleted(true);
         setUserType('artist');
         setAuthPage('app');
@@ -438,6 +440,8 @@ export default function App() {
         }
 
         setHostProfile(profile);
+        setSelectedHostProfileId(profile.id);
+        setActiveHostProfile(profile);
         setProfileCompleted(true);
         setUserType('host');
         setAuthPage('app');
