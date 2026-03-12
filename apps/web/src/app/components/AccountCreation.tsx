@@ -23,6 +23,8 @@ interface UploadedImage {
 
 export function AccountCreation({ userType, onComplete, onBack, mode = 'create', initialData }: AccountCreationProps) {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>(() => {
     const images = initialData?.images ?? [];
     if (images.length > 0 && !images.some((img: UploadedImage) => img.isProfile)) {
@@ -111,7 +113,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if ((userType === 'artist' || userType === 'host') && step === 1) {
@@ -119,7 +121,15 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
       return;
     }
     
-    onComplete({ ...formData, userType, images: uploadedImages });
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onComplete({ ...formData, userType, images: uploadedImages });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to save your profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getUserTypeTitle = () => {
@@ -501,6 +511,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
             <Button 
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6"
+              disabled={isSubmitting}
             >
               {mode === 'edit'
                 ? 'Save Changes'
@@ -510,6 +521,9 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                     ? 'Continue'
                     : 'Create Account'}
             </Button>
+            {submitError ? (
+              <p className="text-sm text-destructive text-center">{submitError}</p>
+            ) : null}
           </form>
         </Card>
       </div>

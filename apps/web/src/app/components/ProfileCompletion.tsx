@@ -20,6 +20,8 @@ interface UploadedImage {
 
 export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompletionProps) {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -94,9 +96,17 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onComplete({ ...formData, userType, images: uploadedImages });
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onComplete({ ...formData, userType, images: uploadedImages });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to save your profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getUserTypeTitle = () => {
@@ -509,9 +519,13 @@ export function ProfileCompletion({ userType, onComplete, onSkip }: ProfileCompl
             <Button 
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-['Teko',sans-serif] text-xl py-6 rounded-sm transition-all duration-200"
+              disabled={isSubmitting}
             >
               Complete Profile
             </Button>
+            {submitError ? (
+              <p className="text-sm text-destructive text-center">{submitError}</p>
+            ) : null}
           </form>
         </div>
       </div>

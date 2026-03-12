@@ -343,8 +343,11 @@ export default function App() {
   };
 
   const handleAccountCreationComplete = async (userData: any) => {
-    if (!authToken) return;
+    if (!authToken) {
+      throw new Error('Your session expired. Please sign in again.');
+    }
     setIsLoadingProfiles(true);
+    let completed = false;
 
     try {
       if (userData.email) {
@@ -396,6 +399,7 @@ export default function App() {
         setUserType('artist');
         setAuthPage('app');
         setCurrentPage('artistProfile');
+        completed = true;
       } else if (userData.userType === 'host') {
         const images = (userData.images ?? []).map((img: any) => img.url);
         const profileImage = (userData.images ?? []).find((img: any) => img.isProfile)?.url;
@@ -438,14 +442,16 @@ export default function App() {
         setUserType('host');
         setAuthPage('app');
         setCurrentPage('hostProfile');
+        completed = true;
       } else {
         setProfileCompleted(true);
         setAuthPage('app');
         setCurrentPage('shows');
+        completed = true;
       }
     } finally {
       setIsLoadingProfiles(false);
-      if (authToken) {
+      if (completed && authToken) {
         await refreshPrivateData();
         await loadListings();
       }
