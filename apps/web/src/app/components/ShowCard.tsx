@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 
 export interface Show {
   id: string;
+  ticketingEnabled?: boolean;
   artistName: string;
   date: string;
   time: string;
@@ -22,7 +23,7 @@ export interface Show {
 
 interface ShowCardProps {
   show: Show;
-  onBuyTickets?: (show: Show) => void;
+  onBuyTickets?: (showId: string) => void;
 }
 
 export function ShowCard({ show, onBuyTickets }: ShowCardProps) {
@@ -41,7 +42,7 @@ export function ShowCard({ show, onBuyTickets }: ShowCardProps) {
   };
 
   const handleShare = () => {
-    // Mock share functionality
+    if (typeof navigator === 'undefined') return;
     if (navigator.share) {
       navigator.share({
         title: `${show.artistName} Live at ${show.neighborhood}`,
@@ -157,10 +158,15 @@ export function ShowCard({ show, onBuyTickets }: ShowCardProps) {
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
           disabled={isSoldOut}
           onClick={() => {
-            if (!isSoldOut) onBuyTickets?.(show);
+            if (isSoldOut || !onBuyTickets || show.ticketingEnabled === false) return;
+            onBuyTickets(show.id);
           }}
         >
-          {isSoldOut ? 'sold out' : 'buy tickets'}
+          {show.ticketingEnabled === false
+            ? 'ticketing not available'
+            : isSoldOut
+              ? 'sold out'
+              : 'buy tickets'}
         </Button>
       </div>
     </Card>

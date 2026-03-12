@@ -3,9 +3,11 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { useState } from 'react';
+import type { MouseEvent } from 'react';
 
 export interface House {
   id: string;
+  userId: string;
   neighborhood: string;
   city: string;
   capacity: number;
@@ -19,10 +21,25 @@ export interface House {
 
 interface HouseCardProps {
   house: House;
-  onClick?: () => void;
+  onViewProfile?: () => void;
+  onPitch?: () => void;
 }
 
-export function HouseCard({ house, onClick }: HouseCardProps) {
+export function HouseCard({ house, onViewProfile, onPitch }: HouseCardProps) {
+  const onCardClick = () => {
+    onViewProfile?.();
+  };
+
+  const handleViewProfile = (event: MouseEvent) => {
+    event.stopPropagation();
+    onViewProfile?.();
+  };
+
+  const handlePitch = (event: MouseEvent) => {
+    event.stopPropagation();
+    onPitch?.();
+  };
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
 
@@ -41,7 +58,7 @@ export function HouseCard({ house, onClick }: HouseCardProps) {
   return (
     <Card 
       className="overflow-hidden hover:shadow-2xl transition-all duration-300 group bg-card border-border cursor-pointer"
-      onClick={onClick}
+      onClick={onCardClick}
     >
       {/* Image Gallery */}
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -146,8 +163,11 @@ export function HouseCard({ house, onClick }: HouseCardProps) {
         </div>
 
         {/* Action Button */}
-        <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-          pitch yourself
+        <Button
+          onClick={handlePitch}
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+        >
+          {onPitch ? 'pitch yourself' : 'view profile'}
         </Button>
       </div>
     </Card>

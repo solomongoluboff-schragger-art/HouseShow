@@ -11,15 +11,6 @@ interface TicketConfirmationProps {
   onBack: () => void;
 }
 
-const mockTicketEvent = {
-  artistName: 'The Violet Echoes',
-  date: 'Friday, January 10',
-  time: '8:00 PM',
-  location: 'Williamsburg, Brooklyn, NY',
-  address: '123 Berry St, Brooklyn, NY 11211',
-  price: '$15.00',
-};
-
 export function TicketConfirmation({ eventId, token, onBack }: TicketConfirmationProps) {
   const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,37 +41,57 @@ export function TicketConfirmation({ eventId, token, onBack }: TicketConfirmatio
     });
     const time = event.proposal?.startTime ?? 'Time TBA';
     const artistName = event.artistProfile?.displayName ?? 'Artist to be announced';
-    const location = [event.hostProfile?.neighborhood, event.hostProfile?.city].filter(Boolean).join(', ');
+    const location = [event.hostProfile?.neighborhood, event.hostProfile?.city]
+      .filter(Boolean)
+      .join(', ');
     const price = event.ticketPriceCents
       ? `$${(event.ticketPriceCents / 100).toFixed(2)}`
       : event.ticketingEnabled
         ? 'Price TBA'
         : 'Free';
-    return { date, time, artistName, location, price };
+    return {
+      date,
+      time,
+      artistName,
+      location: location || 'Location TBA',
+      price,
+      address: event.address,
+    };
   }, [event]);
 
   const handleCopyAddress = async () => {
-    const address = event?.address ?? mockTicketEvent.address;
-    if (!address) return;
-    await navigator.clipboard.writeText(address);
+    if (!eventMeta?.address) {
+      setError('Address not available yet.');
+      return;
+    }
+    await navigator.clipboard.writeText(eventMeta.address);
   };
 
-  if (eventId && token && !event && !error) {
+  if (!eventId || !token) {
+    return (
+      <div className="text-muted-foreground">
+        Ticket details are unavailable right now.
+      </div>
+    );
+  }
+
+  if (!event && !error) {
     return <p className="text-muted-foreground">Loading ticket confirmation...</p>;
   }
 
-  const showMock = !eventMeta;
-  const meta = showMock
-    ? {
-        date: mockTicketEvent.date,
-        time: mockTicketEvent.time,
-        artistName: mockTicketEvent.artistName,
-        location: mockTicketEvent.location,
-        price: mockTicketEvent.price,
-      }
-    : eventMeta;
+  if (!eventMeta) {
+    return (
+      <div className="text-muted-foreground">
+        We could not load this ticket yet.
+      </div>
+    );
+  }
 
-  if (!meta) return null;
+  const addressLabel =
+    eventMeta.address || 'Address will appear once the host confirms details.';
+  const mapsHref = eventMeta.address
+    ? `https://maps.google.com/?q=${encodeURIComponent(eventMeta.address)}`
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -95,13 +106,13 @@ export function TicketConfirmation({ eventId, token, onBack }: TicketConfirmatio
           <div>
             <Badge className="mb-3 bg-accent text-accent-foreground">ticket confirmed</Badge>
             <h1 className="text-3xl font-black text-foreground mb-2">
-              {meta.artistName}
+              {eventMeta.artistName}
             </h1>
-            <p className="text-sm text-muted-foreground">{meta.location || 'Location TBA'}</p>
+            <p className="text-sm text-muted-foreground">{eventMeta.location}</p>
           </div>
           <div className="text-right text-sm text-muted-foreground">
-            <p>{meta.date}</p>
-            <p>{meta.time}</p>
+            <p>{eventMeta.date}</p>
+            <p>{eventMeta.time}</p>
           </div>
         </div>
 
@@ -110,23 +121,21 @@ export function TicketConfirmation({ eventId, token, onBack }: TicketConfirmatio
             <Calendar className="w-5 h-5 text-primary" />
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Date</p>
-              <p className="text-foreground font-semibold">{meta.date}</p>
+              <p className="text-foreground font-semibold">{eventMeta.date}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Ticket className="w-5 h-5 text-primary" />
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Ticket</p>
-              <p className="text-foreground font-semibold">1 ticket · {meta.price}</p>
+              <p className="text-foreground font-semibold">1 ticket · {eventMeta.price}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <MapPin className="w-5 h-5 text-primary" />
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Address</p>
-              <p className="text-foreground font-semibold">
-                {event?.address ?? mockTicketEvent.address}
-              </p>
+              <p className="text-foreground font-semibold">{addressLabel}</p>
             </div>
           </div>
         </div>
@@ -135,20 +144,22 @@ export function TicketConfirmation({ eventId, token, onBack }: TicketConfirmatio
           <Button onClick={onBack} className="bg-primary text-primary-foreground">
             browse more shows
           </Button>
-          <Button variant="outline" onClick={handleCopyAddress}>
+          <Button variant="outline" onClick={handleCopyAddress} disabled={!eventMeta.address}>
             <Copy className="w-4 h-4 mr-2" />
             copy address
           </Button>
-          <a
-            href={`https://maps.google.com/?q=${encodeURIComponent(event?.address ?? mockTicketEvent.address)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Button variant="outline">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              open in maps
-            </Button>
-          </a>
+          {mapsHref ? (
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button variant="outline">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                open in maps
+              </Button>
+            </a>
+          ) : null}
         </div>
       </Card>
     </div>

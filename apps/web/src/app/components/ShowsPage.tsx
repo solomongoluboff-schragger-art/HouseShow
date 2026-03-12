@@ -1,3 +1,5 @@
+import { Show } from './ShowCard';
+
 interface ShowsPageProps {
   shows?: Show[];
   onBuyTickets?: (showId: string) => void;
@@ -6,14 +8,12 @@ interface ShowsPageProps {
 export function ShowsPage({ onBuyTickets, shows = [] }: ShowsPageProps) {
   return (
     <div>
-      {/* Results Count */}
       <div className="mb-6">
         <p className="text-sm text-muted-foreground uppercase tracking-wide">
           {shows.length} upcoming {shows.length === 1 ? 'show' : 'shows'}
         </p>
       </div>
 
-      {/* Shows Grid */}
       {shows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-10 text-center text-muted-foreground">
           No upcoming shows yet.
@@ -24,7 +24,7 @@ export function ShowsPage({ onBuyTickets, shows = [] }: ShowsPageProps) {
             <ShowCard
               key={show.id}
               show={show}
-              onBuyTickets={() => onBuyTickets?.(show.id)}
+              onBuyTickets={onBuyTickets}
             />
           ))}
         </div>

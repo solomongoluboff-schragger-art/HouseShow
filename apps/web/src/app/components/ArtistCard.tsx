@@ -2,9 +2,11 @@ import { MapPin, Users, Star, Music, Calendar } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import type { MouseEvent } from 'react';
 
 export interface Artist {
   id: string;
+  userId: string;
   name: string;
   tagline: string;
   hometown: string;
@@ -21,14 +23,29 @@ export interface Artist {
 
 interface ArtistCardProps {
   artist: Artist;
-  onClick?: () => void;
+  onViewProfile?: () => void;
+  onPitch?: () => void;
 }
 
-export function ArtistCard({ artist, onClick }: ArtistCardProps) {
+export function ArtistCard({ artist, onViewProfile, onPitch }: ArtistCardProps) {
+  const onCardClick = () => {
+    onViewProfile?.();
+  };
+
+  const handleViewProfile = (event: MouseEvent) => {
+    event.stopPropagation();
+    onViewProfile?.();
+  };
+
+  const handlePitch = (event: MouseEvent) => {
+    event.stopPropagation();
+    onPitch?.();
+  };
+
   return (
     <Card 
       className="group overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative cursor-pointer"
-      onClick={onClick}
+      onClick={onCardClick}
     >
       {/* Hire Me Label */}
       {artist.availableForHire && (
@@ -126,11 +143,13 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button 
+            onClick={handleViewProfile}
             className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             view profile
           </Button>
           <Button 
+            onClick={handlePitch}
             variant="outline"
             className="flex-1"
           >

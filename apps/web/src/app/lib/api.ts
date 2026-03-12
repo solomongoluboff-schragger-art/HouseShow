@@ -196,9 +196,17 @@ export async function listArtists(q?: string) {
   return apiRequest<{ artists: ArtistProfile[] }>(`/artists${query}`);
 }
 
+export async function getArtist(profileId: string) {
+  return apiRequest<{ profile: ArtistProfile }>(`/artist/${profileId}`);
+}
+
 export async function listHosts(q?: string) {
   const query = buildQuery({ q, take: 100 });
   return apiRequest<{ hosts: HostProfile[] }>(`/hosts${query}`);
+}
+
+export async function getHost(profileId: string) {
+  return apiRequest<{ profile: HostProfile }>(`/host/${profileId}`);
 }
 
 export async function getMyArtistProfile(token: string) {
