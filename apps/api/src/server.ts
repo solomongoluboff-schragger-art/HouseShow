@@ -140,7 +140,7 @@ async function getConversationForUser(conversationId: string, userId: string) {
 }
 
 async function main() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, bodyLimit: 5 * 1024 * 1024 });
 
       const allowedOrigins = new Set(
     [

@@ -25,6 +25,8 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>(() => {
     const images = initialData?.images ?? [];
     if (images.length > 0 && !images.some((img: UploadedImage) => img.isProfile)) {
@@ -65,41 +67,92 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
     [formData.city, formData.hometown]
   );
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const MAX_PHOTOS = 4;
+  const MAX_IMAGE_BYTES = 900_000;
+  const MAX_IMAGE_DIMENSION = 1400;
+  const IMAGE_QUALITY = 0.72;
+
+  const estimateDataUrlBytes = (dataUrl: string) => {
+    const base64 = dataUrl.split(',')[1] ?? '';
+    return Math.floor((base64.length * 3) / 4);
+  };
+
+  const compressImage = async (file: File) => {
+    const rawDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read image.'));
+      reader.readAsDataURL(file);
+    });
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Failed to load image.'));
+      image.src = rawDataUrl;
+    });
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+    const targetWidth = Math.round(img.width * scale);
+    const targetHeight = Math.round(img.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return rawDataUrl;
+
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    return canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
+  };
+
+  const appendImages = async (files: FileList) => {
+    const remainingSlots = MAX_PHOTOS - uploadedImages.length;
+    const candidates = Array.from(files).slice(0, Math.max(remainingSlots, 0));
+    if (candidates.length === 0) {
+      setImageError(`You can upload up to ${MAX_PHOTOS} photos.`);
+      return;
+    }
+
+    setIsUploadingImages(true);
+    setImageError(null);
+    for (const file of candidates) {
+      try {
+        const compressed = await compressImage(file);
+        const bytes = estimateDataUrlBytes(compressed);
+        if (bytes > MAX_IMAGE_BYTES) {
+          setImageError('One of your photos is too large. Try a smaller image.');
+          continue;
+        }
+        const newImage: UploadedImage = {
+          id: Math.random().toString(36).substr(2, 9),
+          url: compressed,
+          isProfile: false,
+        };
+        setUploadedImages((prev) => [
+          ...prev,
+          { ...newImage, isProfile: prev.length === 0 },
+        ]);
+      } catch (err) {
+        setImageError(err instanceof Error ? err.message : 'Failed to upload image.');
+      }
+    }
+    setIsUploadingImages(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const newImage: UploadedImage = {
-            id: Math.random().toString(36).substr(2, 9),
-            url: reader.result as string,
-            isProfile: uploadedImages.length === 0, // First image is profile by default
-          };
-          setUploadedImages((prev) => [...prev, newImage]);
-        };
-        reader.readAsDataURL(file);
-      });
+      await appendImages(files);
     }
   };
 
-  const handlePhotoDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+  const handlePhotoDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     setIsDraggingPhotos(false);
     const files = e.dataTransfer.files;
     if (files) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const newImage: UploadedImage = {
-            id: Math.random().toString(36).substr(2, 9),
-            url: reader.result as string,
-            isProfile: uploadedImages.length === 0,
-          };
-          setUploadedImages((prev) => [...prev, newImage]);
-        };
-        reader.readAsDataURL(file);
-      });
+      await appendImages(files);
     }
   };
 
@@ -373,7 +426,7 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                     Photos {uploadedImages.length > 0 && `(${uploadedImages.length})`}
                   </Label>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Upload photos. Mark one as your profile picture.
+                    Upload up to 4 photos. Mark one as your profile picture.
                   </p>
                   
                   <div className="grid grid-cols-3 gap-4 mb-4">
@@ -431,6 +484,12 @@ export function AccountCreation({ userType, onComplete, onBack, mode = 'create',
                       onChange={handleImageUpload}
                     />
                   </label>
+                  {isUploadingImages ? (
+                    <p className="text-xs text-muted-foreground mt-2">Processing images...</p>
+                  ) : null}
+                  {imageError ? (
+                    <p className="text-xs text-destructive mt-2">{imageError}</p>
+                  ) : null}
                 </div>
 
                 {/* Social Media & Streaming Links - Artists Only */}
